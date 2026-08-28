@@ -19,7 +19,10 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        php: [8.3, 8.4, 8.5]
+        # composer.json requires php ^8.4 (matches the Exabytes cPanel
+        # production runtime, ea-php84 — see DEPLOYMENT.md), so 8.3 is
+        # dropped from the matrix.
+        php: [8.4, 8.5]
 
     name: PHP ${{ matrix.php }}
 
