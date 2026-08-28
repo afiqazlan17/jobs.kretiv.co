@@ -16,6 +16,22 @@
                         {{ __('Dashboard') }}
                     </x-nav-link>
 
+                    <x-nav-link :href="route('jobs.index')" :active="request()->routeIs('jobs.*')">
+                        {{ __('Jobs') }}
+                    </x-nav-link>
+
+                    <x-nav-link :href="route('leads.index')" :active="request()->routeIs('leads.*')">
+                        {{ __('Leads') }}
+                    </x-nav-link>
+
+                    <x-nav-link :href="route('customers.index')" :active="request()->routeIs('customers.*')">
+                        {{ __('Customers') }}
+                    </x-nav-link>
+
+                    <x-nav-link :href="route('vendors.index')" :active="request()->routeIs('vendors.*')">
+                        {{ __('Vendors') }}
+                    </x-nav-link>
+
                     @if (auth()->user()->isBod())
                         <x-nav-link :href="route('settings.index')" :active="request()->routeIs('settings.*')">
                             {{ __('Settings') }}
