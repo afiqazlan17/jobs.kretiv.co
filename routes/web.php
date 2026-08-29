@@ -2,9 +2,12 @@
 
 use App\Http\Controllers\AttachmentController;
 use App\Http\Controllers\CustomerController;
+use App\Http\Controllers\DocumentController;
+use App\Http\Controllers\FinanceController;
 use App\Http\Controllers\JobController;
 use App\Http\Controllers\LeadController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\ReportController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\VendorController;
 use Illuminate\Support\Facades\Route;
@@ -46,6 +49,8 @@ Route::middleware('auth')->group(function () {
     Route::post('/jobs/{job}/attachments', [AttachmentController::class, 'store'])->name('jobs.attachments.store');
     Route::get('/jobs/{job}/attachments/{attachmentId}', [AttachmentController::class, 'show'])->name('jobs.attachments.show');
     Route::delete('/jobs/{job}/attachments/{attachmentId}', [AttachmentController::class, 'destroy'])->name('jobs.attachments.destroy');
+    Route::get('/jobs/{job}/invoice', [DocumentController::class, 'invoice'])->name('jobs.invoice');
+    Route::get('/jobs/{job}/receipt', [DocumentController::class, 'receipt'])->name('jobs.receipt');
 
     Route::get('/leads', [LeadController::class, 'index'])->name('leads.index');
     Route::get('/leads/create', [LeadController::class, 'create'])->name('leads.create');
@@ -54,6 +59,14 @@ Route::middleware('auth')->group(function () {
     Route::put('/leads/{lead}', [LeadController::class, 'update'])->name('leads.update');
     Route::post('/leads/{lead}/convert', [LeadController::class, 'convert'])->name('leads.convert');
     Route::post('/leads/{lead}/mark-lost', [LeadController::class, 'markLost'])->name('leads.mark-lost');
+
+    Route::get('/finance', [FinanceController::class, 'index'])->name('finance.index');
+    Route::post('/finance/expense', [FinanceController::class, 'storeExpense'])->name('finance.expense.store');
+    Route::post('/finance/opening-balance', [FinanceController::class, 'storeOpeningBalance'])->name('finance.opening-balance.store');
+    Route::post('/finance/director-loan', [FinanceController::class, 'storeDirectorLoan'])->name('finance.director-loan.store');
+    Route::post('/finance/bank-transfer', [FinanceController::class, 'storeBankTransfer'])->name('finance.bank-transfer.store');
+
+    Route::get('/reports', [ReportController::class, 'index'])->name('reports.index');
 });
 
 require __DIR__.'/auth.php';

@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\LedgerEntry;
+use Illuminate\Support\Collection;
 
 // Every entry is a simple two-account transaction (debit_account,
 // credit_account, one amount) — always balanced by construction. Ported
@@ -49,6 +50,62 @@ class LedgerService
     public static function loanAccount(string $directorName): string
     {
         return 'loan_'.self::slugify($directorName);
+    }
+
+    // ── Balance computation ──
+
+    // Accounts that grow with a Debit (asset/expense-style); everything
+    // else (revenue, equity, liabilities like AR's counterpart or a
+    // director loan) grows with a Credit. Mirrors DEBIT_NORMAL in the old
+    // app's finance/page.jsx exactly.
+    public static function isDebitNormal(string $accountKey): bool
+    {
+        return $accountKey === 'ar'
+            || str_starts_with($accountKey, 'bank_')
+            || str_starts_with($accountKey, 'cogs_')
+            || str_starts_with($accountKey, 'opex_');
+    }
+
+    /**
+     * @param  Collection<int, LedgerEntry>  $entries
+     */
+    public static function balanceFor($entries, string $accountKey): float
+    {
+        $raw = $entries->reduce(function (float $bal, LedgerEntry $e) use ($accountKey) {
+            if ($e->debit_account === $accountKey) {
+                $bal += (float) $e->amount;
+            }
+            if ($e->credit_account === $accountKey) {
+                $bal -= (float) $e->amount;
+            }
+
+            return $bal;
+        }, 0.0);
+
+        return self::isDebitNormal($accountKey) ? $raw : -$raw;
+    }
+
+    // A department's Cost of Service is split across per-category
+    // sub-accounts (cogs_<dept>_commission, cogs_<dept>_subcontractor, ...)
+    // — this sums all of them (plus any flat cogs_<dept> entries) back into
+    // one department total, by matching the account-key prefix.
+    /**
+     * @param  Collection<int, LedgerEntry>  $entries
+     */
+    public static function cogsForDept($entries, string $dept): float
+    {
+        $keys = $entries->flatMap(function (LedgerEntry $e) use ($dept) {
+            $matches = [];
+            foreach ([$e->debit_account, $e->credit_account] as $account) {
+                if ($account === "cogs_{$dept}" || str_starts_with((string) $account, "cogs_{$dept}_")) {
+                    $matches[] = $account;
+                }
+            }
+
+            return $matches;
+        })->unique();
+
+        return $keys->sum(fn ($key) => self::balanceFor($entries, $key));
     }
 
     // ── Core entry + reversal primitives ──
