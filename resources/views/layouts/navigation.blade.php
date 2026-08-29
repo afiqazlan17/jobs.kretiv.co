@@ -32,6 +32,16 @@
                         {{ __('Vendors') }}
                     </x-nav-link>
 
+                    @if (auth()->user()->isBod() || auth()->user()->isDeptHead())
+                        <x-nav-link :href="route('finance.index')" :active="request()->routeIs('finance.*')">
+                            {{ __('Finance') }}
+                        </x-nav-link>
+
+                        <x-nav-link :href="route('reports.index')" :active="request()->routeIs('reports.*')">
+                            {{ __('Reports') }}
+                        </x-nav-link>
+                    @endif
+
                     @if (auth()->user()->isBod())
                         <x-nav-link :href="route('settings.index')" :active="request()->routeIs('settings.*')">
                             {{ __('Settings') }}
