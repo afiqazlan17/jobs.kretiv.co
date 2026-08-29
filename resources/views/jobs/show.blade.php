@@ -76,6 +76,41 @@
             @endcan
 
             <div class="bg-white shadow-sm sm:rounded-lg p-6">
+                <h3 class="text-sm font-semibold text-gray-500 uppercase mb-4">Attachments</h3>
+                <div class="space-y-2 text-sm mb-4">
+                    @forelse ($job->attachments ?? [] as $att)
+                        <div class="flex items-center justify-between border-b border-gray-100 pb-2">
+                            <a href="{{ route('jobs.attachments.show', [$job, $att['id']]) }}" class="text-indigo-600 hover:underline">{{ $att['name'] }}</a>
+                            <div class="flex items-center gap-3 text-xs text-gray-400">
+                                <span>{{ $att['kind'] }} · {{ $att['uploaded_by'] }}</span>
+                                @can('update', $job)
+                                <form method="POST" action="{{ route('jobs.attachments.destroy', [$job, $att['id']]) }}" onsubmit="return confirm('Delete this attachment?')">
+                                    @csrf
+                                    @method('DELETE')
+                                    <button type="submit" class="text-red-500 hover:underline">Delete</button>
+                                </form>
+                                @endcan
+                            </div>
+                        </div>
+                    @empty
+                        <p class="text-gray-400">No attachments.</p>
+                    @endforelse
+                </div>
+                @can('update', $job)
+                <form method="POST" action="{{ route('jobs.attachments.store', $job) }}" enctype="multipart/form-data" class="flex flex-wrap items-end gap-2">
+                    @csrf
+                    <select name="kind" class="rounded-md border-gray-300 shadow-sm text-sm">
+                        <option value="artwork">Artwork</option>
+                        <option value="approval">Customer Approval</option>
+                        <option value="document">Document</option>
+                    </select>
+                    <input type="file" name="file" required class="text-sm">
+                    <button type="submit" class="text-xs font-semibold px-3 py-2 rounded-md bg-gray-800 text-white hover:bg-gray-900">Upload</button>
+                </form>
+                @endcan
+            </div>
+
+            <div class="bg-white shadow-sm sm:rounded-lg p-6">
                 <h3 class="text-sm font-semibold text-gray-500 uppercase mb-4">Activity Log</h3>
                 <div class="space-y-3 text-sm">
                     @forelse ($job->activityLog as $log)
