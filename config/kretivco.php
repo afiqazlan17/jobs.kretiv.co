@@ -85,4 +85,16 @@ return [
         'lost' => ['label' => 'Lost', 'color' => '#EF4444'],
     ],
 
+    // Picking a department attributes the cost to that department (cost of
+    // service); leaving it blank posts as a company-wide operating expense.
+    'expense_categories' => [
+        'subcontractor' => 'Subcontractor / Consignment',
+        'rent' => 'Rent',
+        'utilities' => 'Utilities',
+        'salary' => 'Salary',
+        'commission' => 'Commission',
+        'software' => 'Software & Subscriptions',
+        'other' => 'Other',
+    ],
+
 ];
