@@ -134,8 +134,11 @@ class JobController extends Controller
             'departments' => ['required', 'array', 'min:1'],
             'departments.*' => ['in:'.implode(',', array_keys(self::DEPT_CODES))], // DEPT_CODES from GeneratesJobIds
             'per_dept' => ['required', 'array'],
-            'per_dept.*.job_type' => ['required', 'string', 'max:255'],
+            'per_dept.*.job_type' => ['nullable', 'string', 'max:255'], // required unless a package resolves it below
             'per_dept.*.job_type_category' => ['required', 'in:client_project,product_sale'],
+            'per_dept.*.product_line' => ['nullable', 'string', 'max:255'],
+            'per_dept.*.segment' => ['nullable', 'string', 'max:255'],
+            'per_dept.*.package_value' => ['nullable', 'string', 'max:255'],
             'per_dept.*.bank' => ['nullable', 'in:mbb,affin'],
             'per_dept.*.pic' => ['nullable', 'string', 'max:255'],
             'per_dept.*.start_date' => ['nullable', 'date'],
@@ -156,25 +159,73 @@ class JobController extends Controller
         }
 
         $departments = $validated['departments'];
+
+        // First pass: resolve each department's package (if any) and
+        // validate Job Name is present one way or another, before writing
+        // anything — a mid-loop failure must never leave a partial set of
+        // sibling jobs behind.
+        $errors = [];
+        $prepared = [];
+        foreach ($departments as $dept) {
+            $fields = $validated['per_dept'][$dept];
+            $tier = null;
+
+            if (($fields['job_type_category'] ?? null) === 'product_sale' && ! empty($fields['package_value'])) {
+                $tier = $this->resolvePackageTier($dept, $fields['product_line'] ?? '', $fields['segment'] ?? '', $fields['package_value']);
+            }
+
+            if ($tier) {
+                $jobType = trim($fields['job_type'] ?? '') ?: "{$tier['pkg']['label']} ({$tier['tier']['pcs']}pcs)";
+                $prepared[$dept] = [
+                    'job_type' => $jobType,
+                    'estimation_value' => (float) $tier['tier']['price'],
+                    'line_items' => [[
+                        'item' => "{$tier['pkg']['label']} ({$tier['tier']['pcs']}pcs)",
+                        'desc' => implode("\n", $this->packageItemLines($tier['pkg'], $tier['tier'])),
+                        'size' => '',
+                        'qty' => 1,
+                        'price' => $tier['tier']['price'],
+                        'noSize' => true,
+                    ]],
+                ];
+            } else {
+                $jobType = trim($fields['job_type'] ?? '');
+                if ($jobType === '') {
+                    $errors["per_dept.{$dept}.job_type"] = 'Job Name is required.';
+                }
+                $prepared[$dept] = [
+                    'job_type' => $jobType,
+                    'estimation_value' => $fields['estimation_value'] ?? null,
+                    'line_items' => [],
+                ];
+            }
+        }
+
+        if ($errors !== []) {
+            return back()->withErrors($errors)->withInput();
+        }
+
         $isMulti = count($departments) > 1;
         $projectId = $isMulti ? $this->nextProjectId() : null;
 
-        $createdJobs = collect($departments)->map(function (string $dept) use ($validated, $projectId, $request) {
+        $createdJobs = collect($departments)->map(function (string $dept) use ($validated, $prepared, $projectId, $request) {
             $fields = $validated['per_dept'][$dept];
+            $resolved = $prepared[$dept];
 
             $job = Job::create([
                 'job_id' => $this->nextJobId($dept),
                 'customer_id' => $validated['customer_id'],
                 'department' => $dept,
                 'project_id' => $projectId,
-                'job_type' => $fields['job_type'],
+                'job_type' => $resolved['job_type'],
                 'job_type_category' => $fields['job_type_category'],
                 'bank' => $fields['bank'] ?? null,
                 'pic' => $fields['pic'] ?? null,
                 'start_date' => $fields['start_date'] ?? null,
                 'deadline' => $fields['deadline'] ?? null,
                 'notes' => $fields['notes'] ?? null,
-                'estimation_value' => $fields['estimation_value'] ?? null,
+                'estimation_value' => $resolved['estimation_value'],
+                'line_items' => $resolved['line_items'],
                 'status' => Job::STATUS_POTENTIAL,
                 'created_by' => $request->user()->id,
             ]);
@@ -199,6 +250,40 @@ class JobController extends Controller
             'success',
             "{$createdJobs->count()} jobs created under Project {$projectId} ({$createdJobs->pluck('job_id')->join(', ')})."
         );
+    }
+
+    /**
+     * Looks up a package/tier combo from config('kretivco.package_catalog')
+     * — mirrors the old app's findPackageTier() (lib/constants.js).
+     * $packageValue encodes "pkgKey:pcs" (see the package select's option
+     * values in jobs/create.blade.php).
+     *
+     * @return array{pkg: array<string, mixed>, tier: array<string, mixed>}|null
+     */
+    private function resolvePackageTier(string $department, string $productLine, string $segment, string $packageValue): ?array
+    {
+        [$pkgKey, $pcs] = array_pad(explode(':', $packageValue, 2), 2, null);
+
+        $lines = config("kretivco.package_catalog.{$department}", []);
+        $line = collect($lines)->firstWhere('key', $productLine);
+        $seg = collect($line['segments'] ?? [])->firstWhere('key', $segment);
+        $pkg = collect($seg['packages'] ?? [])->firstWhere('key', $pkgKey);
+        $tier = collect($pkg['tiers'] ?? [])->first(fn ($t) => (string) $t['pcs'] === (string) $pcs);
+
+        return $pkg && $tier ? ['pkg' => $pkg, 'tier' => $tier] : null;
+    }
+
+    /**
+     * A package's item list for a specific tier, with "{pcs}" tokens
+     * filled in — mirrors packageItemsFor() from the old app.
+     *
+     * @param  array<string, mixed>  $pkg
+     * @param  array<string, mixed>  $tier
+     * @return array<int, string>
+     */
+    private function packageItemLines(array $pkg, array $tier): array
+    {
+        return array_map(fn (string $item) => str_replace('{pcs}', (string) $tier['pcs'], $item), $pkg['items']);
     }
 
     public function show(Job $job): View

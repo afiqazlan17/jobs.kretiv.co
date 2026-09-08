@@ -86,4 +86,50 @@ class JobCreationTest extends TestCase
             'customer_type' => 'individual',
         ]);
     }
+
+    public function test_selecting_a_package_fills_job_name_estimation_value_and_line_items(): void
+    {
+        $bod = User::factory()->create(['role' => User::ROLE_BOD]);
+        $customer = Customer::create(['customer_id' => 'C001', 'name' => 'Acme Sdn Bhd']);
+
+        $response = $this->actingAs($bod)->post(route('jobs.store'), [
+            'customer_id' => $customer->id,
+            'departments' => ['print'],
+            'per_dept' => [
+                'print' => [
+                    'job_type_category' => 'product_sale',
+                    'product_line' => 'undangan_my',
+                    'segment' => 'end_user',
+                    'package_value' => 'vip:200',
+                ],
+            ],
+        ]);
+
+        $job = Job::first();
+        $response->assertRedirect(route('jobs.show', $job));
+        $this->assertSame('Undangan.my: VIP Wedding Card Package (200pcs)', $job->job_type);
+        $this->assertSame(410.0, (float) $job->estimation_value);
+        $this->assertCount(1, $job->line_items);
+        $this->assertSame(410.0, (float) $job->line_items[0]['price']);
+        $this->assertStringContainsString('Banner 3x6ft', $job->line_items[0]['desc']);
+    }
+
+    public function test_job_name_is_required_when_no_package_is_selected(): void
+    {
+        $bod = User::factory()->create(['role' => User::ROLE_BOD]);
+        $customer = Customer::create(['customer_id' => 'C001', 'name' => 'Acme Sdn Bhd']);
+
+        $response = $this->actingAs($bod)->post(route('jobs.store'), [
+            'customer_id' => $customer->id,
+            'departments' => ['print'],
+            'per_dept' => [
+                'print' => [
+                    'job_type_category' => 'client_project',
+                ],
+            ],
+        ]);
+
+        $response->assertSessionHasErrors(['per_dept.print.job_type']);
+        $this->assertSame(0, Job::count());
+    }
 }

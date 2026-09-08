@@ -4,7 +4,11 @@
     </x-slot>
 
     <div class="py-8"
-         x-data="jobCreateForm({{ $customers->map(fn ($c) => ['id' => $c->id, 'customer_id' => $c->customer_id, 'label' => $c->customer_type === 'company' ? ($c->company ?: $c->name) : $c->name])->values()->toJson() }})">
+         x-data="jobCreateForm(
+             {{ $customers->map(fn ($c) => ['id' => $c->id, 'customer_id' => $c->customer_id, 'label' => $c->customer_type === 'company' ? ($c->company ?: $c->name) : $c->name])->values()->toJson() }},
+             {{ json_encode(array_keys($departments)) }},
+             {{ json_encode(config('kretivco.package_catalog')) }}
+         )">
         <div class="max-w-3xl mx-auto sm:px-6 lg:px-8">
             <div class="bg-white shadow-sm sm:rounded-lg p-6">
                 <form method="POST" action="{{ route('jobs.store') }}">
@@ -82,7 +86,7 @@
                             <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
                                 <div>
                                     <x-input-label value="Job Type *" />
-                                    <select name="per_dept[{{ $key }}][job_type_category]" :disabled="!depts.includes('{{ $key }}')" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm text-xs">
+                                    <select name="per_dept[{{ $key }}][job_type_category]" x-model="perDept.{{ $key }}.jobTypeCategory" :disabled="!depts.includes('{{ $key }}')" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm text-xs">
                                         @foreach (config('kretivco.job_types') as $tKey => $t)
                                             <option value="{{ $tKey }}">{{ $t['label'] }}</option>
                                         @endforeach
@@ -99,9 +103,53 @@
                                 </div>
                             </div>
 
+                            @if (! empty(config('kretivco.package_catalog.'.$key)))
+                                <div x-show="perDept.{{ $key }}.jobTypeCategory === 'product_sale'" x-cloak class="mb-3 p-3 rounded-md bg-white border border-dashed border-gray-300">
+                                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                        <div>
+                                            <x-input-label value="Product" />
+                                            <select name="per_dept[{{ $key }}][product_line]" x-model="perDept.{{ $key }}.productLine" @change="perDept.{{ $key }}.segment = ''; perDept.{{ $key }}.pkg = ''"
+                                                    :disabled="!depts.includes('{{ $key }}') || perDept.{{ $key }}.jobTypeCategory !== 'product_sale'" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm text-xs">
+                                                <option value="">— Custom job (not a package) —</option>
+                                                <template x-for="line in productLinesFor('{{ $key }}')" :key="line.key">
+                                                    <option :value="line.key" x-text="line.label"></option>
+                                                </template>
+                                            </select>
+                                        </div>
+                                        <div x-show="perDept.{{ $key }}.productLine">
+                                            <x-input-label value="Customer Type" />
+                                            <select name="per_dept[{{ $key }}][segment]" x-model="perDept.{{ $key }}.segment" @change="perDept.{{ $key }}.pkg = ''"
+                                                    :disabled="!depts.includes('{{ $key }}') || perDept.{{ $key }}.jobTypeCategory !== 'product_sale'" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm text-xs">
+                                                <option value="">— Select —</option>
+                                                <template x-for="seg in segmentsFor('{{ $key }}', perDept.{{ $key }}.productLine)" :key="seg.key">
+                                                    <option :value="seg.key" x-text="seg.label"></option>
+                                                </template>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div x-show="perDept.{{ $key }}.segment" class="mt-3">
+                                        <x-input-label value="Package" />
+                                        <select name="per_dept[{{ $key }}][package_value]" x-model="perDept.{{ $key }}.pkg" @change="onPackageChange('{{ $key }}')"
+                                                :disabled="!depts.includes('{{ $key }}') || perDept.{{ $key }}.jobTypeCategory !== 'product_sale'" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm text-xs">
+                                            <option value="">— Select package —</option>
+                                            <template x-for="opt in packageTierOptions('{{ $key }}', perDept.{{ $key }}.productLine, perDept.{{ $key }}.segment)" :key="opt.value">
+                                                <option :value="opt.value" x-text="opt.label"></option>
+                                            </template>
+                                        </select>
+                                        <template x-if="findPackageTier('{{ $key }}', perDept.{{ $key }}.productLine, perDept.{{ $key }}.segment, perDept.{{ $key }}.pkg)">
+                                            <div class="mt-2 p-2.5 rounded-md bg-gray-50 text-xs text-gray-600 leading-relaxed">
+                                                <template x-for="line in packageItemLines('{{ $key }}', perDept.{{ $key }}.productLine, perDept.{{ $key }}.segment, perDept.{{ $key }}.pkg)" :key="line">
+                                                    <div x-text="'• ' + line"></div>
+                                                </template>
+                                            </div>
+                                        </template>
+                                    </div>
+                                </div>
+                            @endif
+
                             <div class="mb-3">
                                 <x-input-label value="Job Name *" />
-                                <input type="text" name="per_dept[{{ $key }}][job_type]" :disabled="!depts.includes('{{ $key }}')" placeholder="e.g: Design &amp; Print Roti Bakar" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm text-xs">
+                                <input type="text" name="per_dept[{{ $key }}][job_type]" x-model="perDept.{{ $key }}.jobType" :disabled="!depts.includes('{{ $key }}')" placeholder="e.g: Design &amp; Print Roti Bakar" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm text-xs">
                             </div>
 
                             <div class="mb-3">
@@ -143,10 +191,14 @@
 
     @push('scripts')
     <script>
-        function jobCreateForm(customers) {
+        function jobCreateForm(customers, departmentKeys, packageCatalog) {
             return {
                 customers,
+                packageCatalog,
                 depts: {{ old('departments') ? json_encode(old('departments')) : '[]' }},
+                perDept: Object.fromEntries(departmentKeys.map(k => [k, {
+                    jobTypeCategory: 'client_project', productLine: '', segment: '', pkg: '', jobType: '',
+                }])),
                 customerId: '{{ old('customer_id') }}',
                 customerQuery: '',
                 customerOpen: false,
@@ -154,6 +206,35 @@
                 inlineCustomer: { name: '', company: '', phone: '', email: '', source: 'referral' },
                 inlineSaving: false,
                 inlineError: null,
+                productLinesFor(dept) {
+                    return this.packageCatalog[dept] || [];
+                },
+                segmentsFor(dept, lineKey) {
+                    return this.productLinesFor(dept).find(l => l.key === lineKey)?.segments || [];
+                },
+                packageTierOptions(dept, lineKey, segmentKey) {
+                    const seg = this.segmentsFor(dept, lineKey).find(s => s.key === segmentKey);
+                    if (!seg) return [];
+                    return seg.packages.flatMap(pkg => pkg.tiers.map(tier => ({
+                        value: `${pkg.key}:${tier.pcs}`,
+                        label: `${pkg.label} — ${tier.pcs}pcs (RM ${Number(tier.price).toFixed(2)})`,
+                        pkg, tier,
+                    })));
+                },
+                findPackageTier(dept, lineKey, segmentKey, value) {
+                    if (!value) return null;
+                    return this.packageTierOptions(dept, lineKey, segmentKey).find(o => o.value === value) || null;
+                },
+                packageItemLines(dept, lineKey, segmentKey, value) {
+                    const found = this.findPackageTier(dept, lineKey, segmentKey, value);
+                    if (!found) return [];
+                    return found.pkg.items.map(i => i.replace('{pcs}', found.tier.pcs));
+                },
+                onPackageChange(dept) {
+                    const pd = this.perDept[dept];
+                    const tier = this.findPackageTier(dept, pd.productLine, pd.segment, pd.pkg);
+                    if (tier) pd.jobType = `${tier.pkg.label} (${tier.tier.pcs}pcs)`;
+                },
                 get selectedCustomer() {
                     return this.customers.find(c => String(c.id) === String(this.customerId)) || null;
                 },

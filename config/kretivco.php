@@ -25,6 +25,68 @@ return [
         'product_sale' => ['label' => 'Product Sale', 'color' => '#10B981', 'desc' => 'Customer buys an existing Kretivco product'],
     ],
 
+    // Pre-packaged products staff can pick directly instead of typing a
+    // Product Sale job's items by hand. A product line (e.g. Undangan.my)
+    // prices differently depending on who's buying: an end user paying
+    // Kretivco directly gets the full bundle (card + banner + signage); a
+    // vendor like a wedding planner reselling Kretivco as their printer
+    // gets a cheaper, card-only rate. The chosen tier's price and item
+    // list get baked into the job's line_items at creation (see
+    // JobController::resolvePackageTier()).
+    'package_catalog' => [
+        'print' => [
+            [
+                'key' => 'undangan_my',
+                'label' => 'Undangan.my',
+                'segments' => [
+                    [
+                        'key' => 'end_user',
+                        'label' => 'End User — Direct Customer',
+                        'packages' => [
+                            [
+                                'key' => 'vip',
+                                'label' => 'Undangan.my: VIP Wedding Card Package',
+                                'items' => [
+                                    '1x Undangan.my Digital Wedding Card',
+                                    '4x8in Wedding Card Postcard with Envelope',
+                                    '1x Banner 3x6ft',
+                                    '4x Arrow 2x2ft',
+                                    '2x Bunting 2x5ft',
+                                ],
+                                'tiers' => [
+                                    ['pcs' => 100, 'price' => 380],
+                                    ['pcs' => 200, 'price' => 410],
+                                    ['pcs' => 300, 'price' => 448],
+                                    ['pcs' => 400, 'price' => 468],
+                                    ['pcs' => 500, 'price' => 485],
+                                ],
+                            ],
+                        ],
+                    ],
+                    [
+                        'key' => 'vendor',
+                        'label' => 'Vendor — Wedding Planner',
+                        'packages' => [
+                            [
+                                'key' => 'dloveweddingplanner',
+                                'label' => 'Undangan.my: DLoveWeddingPlanner Package',
+                                'items' => [
+                                    'Digital Card',
+                                    'Physical Card {pcs}pcs',
+                                    'Welcome Board',
+                                ],
+                                'tiers' => [
+                                    ['pcs' => 100, 'price' => 197],
+                                    ['pcs' => 200, 'price' => 274],
+                                ],
+                            ],
+                        ],
+                    ],
+                ],
+            ],
+        ],
+    ],
+
     'banks' => [
         'mbb' => ['label' => 'Maybank', 'code' => 'MBB', 'color' => '#FFC107'],
         'affin' => ['label' => 'AFFIN', 'code' => 'AFFIN', 'color' => '#E53935'],
