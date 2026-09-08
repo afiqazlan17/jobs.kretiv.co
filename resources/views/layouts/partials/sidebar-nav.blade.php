@@ -25,10 +25,18 @@
 
 {{-- Navigation --}}
 <nav class="flex-1 py-1 overflow-y-auto">
+    @php
+        $jobSubmenu = [
+            ['key' => 'queue', 'label' => 'Job Queue', 'icon' => '📋'],
+            ['key' => 'aging', 'label' => 'Aging Job', 'icon' => '⏳'],
+            ['key' => 'mine', 'label' => 'My Jobs', 'icon' => '🙋'],
+        ];
+        $activeJobView = request()->routeIs('jobs.index') ? (request()->query('view', 'queue')) : null;
+    @endphp
     @foreach ($navItems as $item)
         @continue(isset($item['roles']) && ! in_array($user->role, $item['roles'], true))
         @php $active = request()->routeIs($item['pattern'] ?? $item['route']); @endphp
-        <a href="{{ route($item['route']) }}"
+        <a href="{{ $item['key'] === 'jobs' ? route('jobs.index') : route($item['route']) }}"
            class="relative flex items-center gap-3 h-11 px-5 text-[13px] whitespace-nowrap {{ $active ? 'bg-white/[.06] text-white font-semibold' : 'text-white/50 font-normal hover:text-white/80' }}">
             @if ($active)
                 <span class="absolute left-0 top-[7px] bottom-[7px] w-[3px] bg-[#E91E63] rounded-r"></span>
@@ -36,6 +44,17 @@
             <span class="text-[15px] w-6 text-center">{{ $item['icon'] }}</span>
             <span>{{ $item['label'] }}</span>
         </a>
+        @if ($item['key'] === 'jobs' && $active)
+            <div class="py-0.5 pb-1.5">
+                @foreach ($jobSubmenu as $sub)
+                    <a href="{{ route('jobs.index', ['view' => $sub['key']]) }}"
+                       class="flex items-start gap-2 min-h-[34px] py-[7px] pl-11 pr-2.5 text-xs leading-tight {{ $activeJobView === $sub['key'] ? 'bg-white/[.08] text-white font-semibold' : 'text-white/45 font-normal' }}">
+                        <span class="text-[13px] shrink-0 mt-px">{{ $sub['icon'] }}</span>
+                        <span>{{ $sub['label'] }}</span>
+                    </a>
+                @endforeach
+            </div>
+        @endif
     @endforeach
 </nav>
 

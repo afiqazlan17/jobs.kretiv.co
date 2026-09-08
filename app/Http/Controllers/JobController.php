@@ -14,29 +14,97 @@ class JobController extends Controller
 {
     use GeneratesJobIds;
 
+    /**
+     * @var array<string, array{title: string, sub: string}>
+     */
+    public const VIEW_META = [
+        'queue' => ['title' => 'Job Queue', 'sub' => 'All jobs, sorted by most recently changed'],
+        'aging' => ['title' => 'Aging Job', 'sub' => 'Jobs untouched for the longest'],
+        'mine' => ['title' => 'My Jobs', 'sub' => 'Jobs under your responsibility'],
+    ];
+
     public function index(Request $request): View
     {
         $this->authorize('viewAny', Job::class);
 
         $user = $request->user();
-        $query = Job::query()->with('customer')->where('archived', false)->orderByDesc('updated_at');
+        $view = array_key_exists($request->query('view'), self::VIEW_META) ? $request->query('view') : 'queue';
+
+        $query = Job::query()->with(['customer', 'activityLog'])->where('archived', false);
 
         if (! $user->isBod()) {
             $query->whereIn('department', $user->visibleDepartments());
+        }
+
+        if ($view === 'mine') {
+            $query->where('pic', $user->name);
+        } elseif ($view === 'aging') {
+            $query->whereNotIn('status', [Job::STATUS_COMPLETED, Job::STATUS_CANCELLED]);
         }
 
         if ($dept = $request->query('department')) {
             $query->where('department', $dept);
         }
 
-        if ($status = $request->query('status')) {
+        $status = $request->query('status');
+        if (in_array($status, array_keys(config('kretivco.hold_statuses')), true)) {
+            $query->where('hold_status', $status);
+        } elseif ($status) {
             $query->where('status', $status);
         }
 
+        if ($search = $request->query('search')) {
+            $query->where(function ($q) use ($search) {
+                $q->where('job_id', 'like', "%{$search}%")
+                    ->orWhere('job_type', 'like', "%{$search}%")
+                    ->orWhere('pic', 'like', "%{$search}%")
+                    ->orWhere('project_id', 'like', "%{$search}%")
+                    ->orWhereHas('customer', fn ($q) => $q->where('name', 'like', "%{$search}%"));
+            });
+        }
+
+        $jobs = $query->get();
+
+        // "Last touched" = the most recent of the job's own timestamps and
+        // every activity-log entry against it (notes/comments included —
+        // status/field changes don't always bump updated_at otherwise).
+        $jobs->each(function (Job $job) {
+            $job->last_touched = $job->activityLog->max('created_at') ?? $job->updated_at;
+        });
+
+        // Sibling jobs sharing a project_id (created together across
+        // departments) — surfaced as a 🔗 badge next to the Job ID.
+        $projectIds = $jobs->pluck('project_id')->filter()->unique()->values();
+        $siblingsByProject = $projectIds->isEmpty()
+            ? collect()
+            : Job::whereIn('project_id', $projectIds)->get()->groupBy('project_id');
+
+        $sortCol = in_array($request->query('sort'), ['id', 'customer', 'dept', 'status', 'value', 'deadline', 'touched'], true)
+            ? $request->query('sort') : 'touched';
+        $sortDir = $request->query('dir') === 'asc' ? 'asc' : 'desc';
+
+        $jobs = $jobs->sortBy(function (Job $job) use ($sortCol) {
+            return match ($sortCol) {
+                'id' => $job->job_id,
+                'customer' => $job->customer?->name ?? '',
+                'dept' => $job->department,
+                'status' => $job->status,
+                'value' => (float) ($job->estimation_value ?? 0),
+                'deadline' => $job->deadline?->timestamp ?? PHP_INT_MAX,
+                default => $job->last_touched?->timestamp ?? 0,
+            };
+        }, SORT_REGULAR, $sortDir === 'desc')->values();
+
         return view('jobs.index', [
-            'jobs' => $query->get(),
+            'jobs' => $jobs,
+            'siblingsByProject' => $siblingsByProject,
             'department' => $dept ?? '',
             'status' => $status ?? '',
+            'search' => $search ?? '',
+            'view' => $view,
+            'sortCol' => $sortCol,
+            'sortDir' => $sortDir,
+            'pipelineValue' => $jobs->whereIn('status', [Job::STATUS_POTENTIAL, Job::STATUS_IN_PROGRESS])->sum('estimation_value'),
         ]);
     }
 
