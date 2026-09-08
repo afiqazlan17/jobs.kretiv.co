@@ -43,6 +43,15 @@ return [
         'cancelled' => ['label' => 'Cancelled', 'color' => '#EF4444'],
     ],
 
+    // Orthogonal to job_statuses above — a job can be "In Progress" and
+    // "Pending" at the same time (e.g. work technically ongoing but
+    // waiting on customer confirmation). Visible flag + reason only, no
+    // automatic SLA timer.
+    'hold_statuses' => [
+        'pending' => ['label' => 'Pending', 'color' => '#F59E0B', 'icon' => '⏸'],
+        'suspended' => ['label' => 'Suspended', 'color' => '#EF4444', 'icon' => '⛔'],
+    ],
+
     'cancel_reasons' => [
         'customer_cancelled' => 'Customer cancelled',
         'budget_issue' => 'Budget issue',
