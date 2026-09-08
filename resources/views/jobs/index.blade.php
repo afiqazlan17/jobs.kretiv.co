@@ -105,7 +105,12 @@
                                         <span class="text-[11px] font-semibold rounded px-2 py-0.5" style="color:{{ $dept['color'] }};background:{{ $dept['color'] }}15">{{ $dept['label'] }}</span>
                                     @endif
                                 </td>
-                                <td class="px-4 py-3 text-gray-600 whitespace-nowrap">{{ $job->job_type }}</td>
+                                <td class="px-4 py-3 text-gray-600 whitespace-nowrap">
+                                    {{ $job->job_type }}
+                                    @if ($job->has_unpaid_vendor_cost)
+                                        <span class="ml-1 text-[10px] font-semibold rounded-full px-2 py-0.5 bg-amber-50 text-amber-600" title="Vendor cost recorded but not yet marked as paid">🏭 Unpaid</span>
+                                    @endif
+                                </td>
                                 <td class="px-4 py-3 whitespace-nowrap">
                                     @if ($st)
                                         <span class="text-xs font-semibold rounded-full px-3 py-1" style="color:{{ $st['color'] }};background:{{ $st['color'] }}15">{{ $st['label'] }}</span>

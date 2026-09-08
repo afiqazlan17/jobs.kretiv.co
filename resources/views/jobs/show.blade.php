@@ -77,6 +77,113 @@
             </div>
             @endcan
 
+            <div class="bg-white shadow-sm sm:rounded-lg p-6" x-data="{ showVendorForm: false, payingId: null }">
+                @php
+                    $vendorCosts = collect($job->vendor_costs ?? []);
+                    $totalEstimated = $vendorCosts->sum(fn ($v) => (float) ($v['estimated_cost'] ?? 0));
+                    $totalActual = $vendorCosts->sum(fn ($v) => (float) ($v['actual_cost'] ?? 0));
+                    $customerPrice = (float) ($job->final_value ?? $job->estimation_value ?? 0);
+                @endphp
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-sm font-semibold text-gray-500 uppercase">Vendor Cost</h3>
+                    @can('update', $job)
+                    <button type="button" @click="showVendorForm = !showVendorForm" class="text-xs font-semibold px-3 py-1.5 rounded-md border border-gray-200 text-pink-600 hover:bg-pink-50">+ Add Vendor Cost</button>
+                    @endcan
+                </div>
+
+                @can('update', $job)
+                <form method="POST" action="{{ route('jobs.vendor-costs.store', $job) }}" x-show="showVendorForm" x-cloak class="mb-4 p-3 rounded-md bg-gray-50 border border-gray-200 flex flex-wrap items-end gap-2">
+                    @csrf
+                    <div>
+                        <label class="text-xs text-gray-500">Vendor *</label>
+                        <select name="vendor_id" required class="block rounded-md border-gray-300 shadow-sm text-sm">
+                            <option value="">— Select —</option>
+                            @foreach ($vendors as $vendor)
+                                <option value="{{ $vendor->id }}">{{ $vendor->vendor_id }} · {{ $vendor->name }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div>
+                        <label class="text-xs text-gray-500">Estimated Cost (RM)</label>
+                        <input type="number" step="0.01" min="0" name="estimated_cost" class="block rounded-md border-gray-300 shadow-sm text-sm w-32">
+                    </div>
+                    <div>
+                        <label class="text-xs text-gray-500">Actual Cost (RM)</label>
+                        <input type="number" step="0.01" min="0" name="actual_cost" class="block rounded-md border-gray-300 shadow-sm text-sm w-32">
+                    </div>
+                    <div class="flex-1 min-w-[160px]">
+                        <label class="text-xs text-gray-500">Notes</label>
+                        <input type="text" name="notes" placeholder="e.g. includes delivery" class="block w-full rounded-md border-gray-300 shadow-sm text-sm">
+                    </div>
+                    <button type="submit" class="text-xs font-semibold px-3 py-2 rounded-md bg-gray-800 text-white hover:bg-gray-900">Save</button>
+                </form>
+                @endcan
+
+                @if ($vendorCosts->isEmpty())
+                    <p class="text-sm text-gray-400 italic">No vendor cost recorded yet — leave blank if this job is done in-house.</p>
+                @else
+                    <div class="space-y-2">
+                        @foreach ($vendorCosts as $item)
+                            @php $vendor = $vendors->firstWhere('id', $item['vendor_id']); @endphp
+                            <div class="border border-gray-100 rounded-md p-3 text-sm">
+                                <div class="flex items-center justify-between">
+                                    <div>
+                                        <span class="font-semibold">{{ $vendor?->name ?? 'Unknown vendor' }}</span>
+                                        @if ($vendor)<span class="ml-1.5 text-xs text-gray-400 font-mono">{{ $vendor->vendor_id }}</span>@endif
+                                    </div>
+                                    <span class="text-xs font-semibold rounded-full px-2 py-0.5 {{ ($item['status'] ?? 'unpaid') === 'paid' ? 'text-green-600 bg-green-50' : 'text-amber-600 bg-amber-50' }}">
+                                        {{ ($item['status'] ?? 'unpaid') === 'paid' ? '✓ Paid' : '⏸ Unpaid' }}
+                                    </span>
+                                </div>
+                                <div class="flex gap-4 mt-1.5 text-xs text-gray-500">
+                                    <span>Estimated: <strong class="text-gray-800">{{ $item['estimated_cost'] ? 'RM '.number_format($item['estimated_cost'], 2) : '—' }}</strong></span>
+                                    <span>Actual: <strong class="text-gray-800">{{ $item['actual_cost'] ? 'RM '.number_format($item['actual_cost'], 2) : '—' }}</strong></span>
+                                </div>
+                                @if (!empty($item['notes']))
+                                    <p class="text-xs text-gray-400 italic mt-1">{{ $item['notes'] }}</p>
+                                @endif
+                                @can('update', $job)
+                                <div class="flex flex-wrap items-center gap-2 mt-2">
+                                    @if (($item['status'] ?? 'unpaid') === 'unpaid' && (float) ($item['actual_cost'] ?? 0) > 0)
+                                        <button type="button" @click="payingId = (payingId === '{{ $item['id'] }}' ? null : '{{ $item['id'] }}')" class="text-xs font-semibold px-2.5 py-1 rounded-md border border-green-200 text-green-600 hover:bg-green-50">Mark as Paid</button>
+                                    @endif
+                                    <form method="POST" action="{{ route('jobs.vendor-costs.destroy', [$job, $item['id']]) }}" onsubmit="return confirm('Remove this vendor cost entry?')">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit" class="text-xs font-semibold px-2.5 py-1 rounded-md border border-red-200 text-red-600 hover:bg-red-50">Remove</button>
+                                    </form>
+                                </div>
+                                <form method="POST" action="{{ route('jobs.vendor-costs.mark-paid', [$job, $item['id']]) }}" x-show="payingId === '{{ $item['id'] }}'" x-cloak class="flex flex-wrap items-end gap-2 mt-2 p-2.5 rounded-md bg-gray-50">
+                                    @csrf
+                                    <div>
+                                        <label class="text-xs text-gray-500">Bank *</label>
+                                        <select name="bank" required class="block rounded-md border-gray-300 shadow-sm text-sm">
+                                            @foreach (config('kretivco.banks') as $key => $bank)
+                                                <option value="{{ $key }}">{{ $bank['label'] }}</option>
+                                            @endforeach
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label class="text-xs text-gray-500">Date Paid</label>
+                                        <input type="date" name="date" value="{{ now()->toDateString() }}" class="block rounded-md border-gray-300 shadow-sm text-sm">
+                                    </div>
+                                    <button type="submit" class="text-xs font-semibold px-3 py-2 rounded-md bg-green-600 text-white hover:bg-green-700">Confirm Paid</button>
+                                </form>
+                                @endcan
+                            </div>
+                        @endforeach
+                    </div>
+                    <div class="mt-3 pt-3 border-t border-gray-100 text-xs text-gray-600 space-y-1">
+                        <div class="flex justify-between"><span>Total Estimated</span><strong>RM {{ number_format($totalEstimated, 2) }}</strong></div>
+                        <div class="flex justify-between"><span>Estimated Margin</span><strong class="{{ ($customerPrice - $totalEstimated) >= 0 ? 'text-green-600' : 'text-red-600' }}">RM {{ number_format($customerPrice - $totalEstimated, 2) }}</strong></div>
+                        @if ($totalActual > 0)
+                            <div class="flex justify-between"><span>Total Actual</span><strong>RM {{ number_format($totalActual, 2) }}</strong></div>
+                            <div class="flex justify-between"><span>Actual Margin</span><strong class="{{ ($customerPrice - $totalActual) >= 0 ? 'text-green-600' : 'text-red-600' }}">RM {{ number_format($customerPrice - $totalActual, 2) }}</strong></div>
+                        @endif
+                    </div>
+                @endif
+            </div>
+
             <div class="bg-white shadow-sm sm:rounded-lg p-6">
                 <h3 class="text-sm font-semibold text-gray-500 uppercase mb-4">Attachments</h3>
                 <div class="space-y-2 text-sm mb-4">
