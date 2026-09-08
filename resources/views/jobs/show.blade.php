@@ -1,7 +1,7 @@
 <x-app-layout>
     <x-slot name="header">
         <div class="flex items-center gap-3">
-            <h2 class="font-semibold text-xl text-gray-800 leading-tight font-mono">{{ $job->job_id }}</h2>
+            <h2 class="font-semibold text-xl text-white leading-tight font-mono">{{ $job->job_id }}</h2>
             @php $st = config('kretivco.job_statuses')[$job->status] ?? null; @endphp
             <span class="text-xs rounded-full px-2 py-1" style="background: {{ ($st['color'] ?? '#eee') }}22; color: {{ $st['color'] ?? '#666' }}">{{ $st['label'] ?? $job->status }}</span>
         </div>
