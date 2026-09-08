@@ -6,6 +6,7 @@ use App\Http\Controllers\Concerns\GeneratesJobIds;
 use App\Models\ActivityLog;
 use App\Models\Customer;
 use App\Models\Job;
+use App\Models\Vendor;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -70,6 +71,9 @@ class JobController extends Controller
         // status/field changes don't always bump updated_at otherwise).
         $jobs->each(function (Job $job) {
             $job->last_touched = $job->activityLog->max('created_at') ?? $job->updated_at;
+            $job->has_unpaid_vendor_cost = collect($job->vendor_costs ?? [])->contains(
+                fn (array $v) => ($v['status'] ?? null) === 'unpaid' && (($v['estimated_cost'] ?? null) || ($v['actual_cost'] ?? null))
+            );
         });
 
         // Sibling jobs sharing a project_id (created together across
@@ -292,6 +296,7 @@ class JobController extends Controller
 
         return view('jobs.show', [
             'job' => $job->load(['customer', 'activityLog' => fn ($q) => $q->orderByDesc('created_at')]),
+            'vendors' => Vendor::orderBy('name')->get(),
         ]);
     }
 
