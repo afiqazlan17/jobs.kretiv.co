@@ -118,48 +118,87 @@ class JobController extends Controller
         ]);
     }
 
+    /**
+     * A single submission can create one job per selected department, all
+     * under the same customer — matches the old app's multi-department
+     * create flow. More than one department shares a generated Project ID
+     * so the siblings stay linked (see GeneratesJobIds::nextProjectId());
+     * a single-department submission gets no project_id, same as before.
+     */
     public function store(Request $request): RedirectResponse
     {
         $this->authorize('create', Job::class);
 
         $validated = $request->validate([
             'customer_id' => ['required', 'exists:customers,id'],
-            'department' => ['required', 'in:'.implode(',', array_keys(self::DEPT_CODES))], // DEPT_CODES from GeneratesJobIds
-            'job_type' => ['required', 'string', 'max:255'],
-            'job_type_category' => ['required', 'in:client_project,product_sale'],
-            'bank' => ['nullable', 'in:mbb,affin'],
-            'pic' => ['nullable', 'string', 'max:255'],
-            'start_date' => ['nullable', 'date'],
-            'deadline' => ['nullable', 'date'],
-            'notes' => ['nullable', 'string'],
-            'estimation_value' => ['nullable', 'numeric', 'min:0'],
+            'departments' => ['required', 'array', 'min:1'],
+            'departments.*' => ['in:'.implode(',', array_keys(self::DEPT_CODES))], // DEPT_CODES from GeneratesJobIds
+            'per_dept' => ['required', 'array'],
+            'per_dept.*.job_type' => ['required', 'string', 'max:255'],
+            'per_dept.*.job_type_category' => ['required', 'in:client_project,product_sale'],
+            'per_dept.*.bank' => ['nullable', 'in:mbb,affin'],
+            'per_dept.*.pic' => ['nullable', 'string', 'max:255'],
+            'per_dept.*.start_date' => ['nullable', 'date'],
+            'per_dept.*.deadline' => ['nullable', 'date'],
+            'per_dept.*.notes' => ['nullable', 'string'],
+            'per_dept.*.estimation_value' => ['nullable', 'numeric', 'min:0'],
         ]);
 
         // Defense in depth: the create form only offers departments the
-        // user can see (availableDepartments()), but a posted department
+        // user can see (availableDepartments()), but posted departments
         // outside that set must still be rejected server-side — BOD is
         // exempt (sees everything).
-        if (! $request->user()->isBod() && ! in_array($validated['department'], $request->user()->visibleDepartments(), true)) {
-            abort(403);
+        if (! $request->user()->isBod()) {
+            $allowed = $request->user()->visibleDepartments();
+            if (array_diff($validated['departments'], $allowed) !== []) {
+                abort(403);
+            }
         }
 
-        $job = Job::create([
-            ...$validated,
-            'job_id' => $this->nextJobId($validated['department']),
-            'status' => Job::STATUS_POTENTIAL,
-            'created_by' => $request->user()->id,
-        ]);
+        $departments = $validated['departments'];
+        $isMulti = count($departments) > 1;
+        $projectId = $isMulti ? $this->nextProjectId() : null;
 
-        ActivityLog::create([
-            'job_id' => $job->id,
-            'job_code' => $job->job_id,
-            'user_id' => $request->user()->id,
-            'user_name' => $request->user()->name,
-            'action' => 'created',
-            'note' => 'Job created.',
-        ]);
+        $createdJobs = collect($departments)->map(function (string $dept) use ($validated, $projectId, $request) {
+            $fields = $validated['per_dept'][$dept];
 
-        return redirect()->route('jobs.show', $job)->with('success', "{$job->job_id} created.");
+            $job = Job::create([
+                'job_id' => $this->nextJobId($dept),
+                'customer_id' => $validated['customer_id'],
+                'department' => $dept,
+                'project_id' => $projectId,
+                'job_type' => $fields['job_type'],
+                'job_type_category' => $fields['job_type_category'],
+                'bank' => $fields['bank'] ?? null,
+                'pic' => $fields['pic'] ?? null,
+                'start_date' => $fields['start_date'] ?? null,
+                'deadline' => $fields['deadline'] ?? null,
+                'notes' => $fields['notes'] ?? null,
+                'estimation_value' => $fields['estimation_value'] ?? null,
+                'status' => Job::STATUS_POTENTIAL,
+                'created_by' => $request->user()->id,
+            ]);
+
+            ActivityLog::create([
+                'job_id' => $job->id,
+                'job_code' => $job->job_id,
+                'user_id' => $request->user()->id,
+                'user_name' => $request->user()->name,
+                'action' => 'created',
+                'note' => 'Job created.',
+            ]);
+
+            return $job;
+        });
+
+        if (! $isMulti) {
+            return redirect()->route('jobs.show', $createdJobs->first())->with('success', "{$createdJobs->first()->job_id} created.");
+        }
+
+        return redirect()->route('jobs.index')->with(
+            'success',
+            "{$createdJobs->count()} jobs created under Project {$projectId} ({$createdJobs->pluck('job_id')->join(', ')})."
+        );
     }
 
     public function show(Job $job): View

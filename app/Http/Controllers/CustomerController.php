@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Customer;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -29,7 +30,7 @@ class CustomerController extends Controller
         ]);
     }
 
-    public function store(Request $request): RedirectResponse
+    public function store(Request $request): RedirectResponse|JsonResponse
     {
         $this->authorize('create', Customer::class);
 
@@ -40,6 +41,13 @@ class CustomerController extends Controller
             'customer_id' => $this->nextCustomerId(),
             'created_by' => $request->user()->id,
         ]);
+
+        // The Job create form's inline "+ New Customer" panel posts here via
+        // fetch() so it can select the new customer without a page reload —
+        // same endpoint the full Customers page form uses.
+        if ($request->wantsJson()) {
+            return response()->json($customer);
+        }
 
         return back()->with('success', "{$customer->customer_id} · {$customer->name} ditambah.");
     }
@@ -58,13 +66,13 @@ class CustomerController extends Controller
      */
     private function validated(Request $request): array
     {
-        return $request->validate([
+        $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'company' => ['nullable', 'string', 'max:255'],
             'phone' => ['nullable', 'string', 'max:50'],
             'email' => ['nullable', 'email', 'max:255'],
-            'source' => ['required', 'in:tender,referral,walk-in,social_media,website,other'],
-            'customer_type' => ['required', 'in:individual,company'],
+            'source' => ['nullable', 'in:tender,referral,walk-in,social_media,website,other'],
+            'customer_type' => ['nullable', 'in:individual,company'],
             'ssm_number' => ['nullable', 'string', 'max:100'],
             'address_line_1' => ['nullable', 'string', 'max:255'],
             'address_line_2' => ['nullable', 'string', 'max:255'],
@@ -73,6 +81,15 @@ class CustomerController extends Controller
             'state' => ['nullable', 'string', 'max:100'],
             'notes' => ['nullable', 'string'],
         ]);
+
+        // The Job create form's inline "+ New Customer" mini-form only
+        // collects name/company/phone/email/source — customer_type isn't
+        // asked there, so it needs a sensible default rather than a
+        // validation failure.
+        $validated['source'] ??= 'referral';
+        $validated['customer_type'] ??= 'individual';
+
+        return $validated;
     }
 
     /** KCO-001, KCO-002, ... — matches the old app's genCustId(). */

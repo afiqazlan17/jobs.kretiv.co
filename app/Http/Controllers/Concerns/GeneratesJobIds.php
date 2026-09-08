@@ -29,4 +29,20 @@ trait GeneratesJobIds
 
         return "{$code}-{$year}-".str_pad((string) ($count + 1), 3, '0', STR_PAD_LEFT);
     }
+
+    /**
+     * Groups sibling jobs created together across multiple departments
+     * under one customer request — matches lib/hooks.js genProjectId().
+     * Only assigned when a create-job submission selects more than one
+     * department; a single-department job never gets a project_id.
+     */
+    protected function nextProjectId(): string
+    {
+        $year = now()->year;
+        $count = Job::where('project_id', 'like', "PRJ-{$year}-%")
+            ->distinct('project_id')
+            ->count('project_id');
+
+        return "PRJ-{$year}-".str_pad((string) ($count + 1), 3, '0', STR_PAD_LEFT);
+    }
 }
