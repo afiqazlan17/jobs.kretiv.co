@@ -1,3 +1,10 @@
+/* Self-hosted Figtree — replaces the fonts.bunny.net <link> tags that used
+   to sit in the Blade layouts. Bundled via Vite instead of an external CDN
+   so the app never depends on a third-party origin's certificate/uptime. */
+@import '@fontsource/figtree/400.css';
+@import '@fontsource/figtree/500.css';
+@import '@fontsource/figtree/600.css';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
