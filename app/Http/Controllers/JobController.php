@@ -334,6 +334,12 @@ class JobController extends Controller
             'siblings' => $job->project_id
                 ? Job::where('project_id', $job->project_id)->where('id', '!=', $job->id)->get()
                 : collect(),
+            // "Combine with Other Job" candidates — same customer, any
+            // department/project, not archived. Separate concept from the
+            // project_id sibling grouping above (see DocumentController::combine()).
+            'combineCandidates' => $job->customer_id
+                ? Job::where('customer_id', $job->customer_id)->where('id', '!=', $job->id)->where('archived', false)->get()
+                : collect(),
         ]);
     }
 
