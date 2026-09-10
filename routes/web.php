@@ -52,6 +52,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/jobs/{job}/archive', [JobController::class, 'archive'])->name('jobs.archive');
     Route::post('/jobs/{job}/rollback', [JobController::class, 'rollback'])->name('jobs.rollback');
     Route::post('/jobs/{job}/notes', [JobController::class, 'addNote'])->name('jobs.notes.store');
+    Route::get('/jobs/{job}/notes/{log}/attachments/{attachmentId}', [JobController::class, 'noteAttachment'])->name('jobs.notes.attachments.show');
     Route::post('/jobs/{job}/attachments', [AttachmentController::class, 'store'])->name('jobs.attachments.store');
     Route::get('/jobs/{job}/attachments/{attachmentId}', [AttachmentController::class, 'show'])->name('jobs.attachments.show');
     Route::delete('/jobs/{job}/attachments/{attachmentId}', [AttachmentController::class, 'destroy'])->name('jobs.attachments.destroy');

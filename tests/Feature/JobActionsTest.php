@@ -5,6 +5,8 @@ namespace Tests\Feature;
 use App\Models\Job;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class JobActionsTest extends TestCase
@@ -140,6 +142,39 @@ class JobActionsTest extends TestCase
             'note' => 'Called customer, waiting on artwork.',
             'user_name' => 'Afiq',
         ]);
+    }
+
+    public function test_add_note_sanitizes_malicious_html_before_storing(): void
+    {
+        $bod = User::factory()->create(['role' => User::ROLE_BOD]);
+        $job = $this->job();
+
+        $this->actingAs($bod)->post(route('jobs.notes.store', $job), [
+            'note' => '<p>Hello</p><script>alert(1)</script>',
+        ]);
+
+        $log = $job->activityLog()->latest()->first();
+        $this->assertStringNotContainsString('<script', $log->note);
+        $this->assertStringContainsString('Hello', $log->note);
+    }
+
+    public function test_add_note_with_an_attachment_can_be_downloaded_by_a_department_peer(): void
+    {
+        Storage::fake('public');
+        $bod = User::factory()->create(['role' => User::ROLE_BOD]);
+        $job = $this->job();
+
+        $this->actingAs($bod)->post(route('jobs.notes.store', $job), [
+            'note' => '<p>See attached</p>',
+            'attachments' => [UploadedFile::fake()->create('quote.pdf', 100)],
+        ]);
+
+        $log = $job->activityLog()->latest()->first();
+        $this->assertCount(1, $log->attachments);
+        $this->assertSame('quote.pdf', $log->attachments[0]['name']);
+
+        $response = $this->actingAs($bod)->get(route('jobs.notes.attachments.show', [$job, $log, $log->attachments[0]['id']]));
+        $response->assertOk();
     }
 
     public function test_department_scoped_user_cannot_reassign_a_job_outside_their_department(): void
