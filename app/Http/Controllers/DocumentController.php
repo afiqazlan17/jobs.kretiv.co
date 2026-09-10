@@ -62,6 +62,82 @@ class DocumentController extends Controller
         return $this->renderPdf('receipt', $job, (float) $entry->amount, $docNumber, $request);
     }
 
+    /**
+     * One combined PDF covering line items from 2+ jobs for the SAME
+     * customer — unrelated to the project_id sibling grouping (that's
+     * jobs created together across departments; this is any jobs sharing
+     * a customer, picked ad hoc). All selected jobs must share the same
+     * pipeline status, since a combined document can't represent two
+     * different stages at once. Each involved job gets its own
+     * JobDocument row pointing at the SAME stored PDF, so it shows up in
+     * every one of their Documents lists.
+     */
+    public function combine(Request $request, Job $job, LedgerService $ledger)
+    {
+        $this->authorize('update', $job);
+
+        $validated = $request->validate([
+            'doc_type' => ['required', 'in:quotation,proforma,invoice,receipt'],
+            'job_ids' => ['required', 'array', 'min:1'],
+            'job_ids.*' => ['integer', 'exists:jobs,id'],
+        ]);
+
+        $siblings = Job::whereIn('id', $validated['job_ids'])
+            ->where('customer_id', $job->customer_id)
+            ->where('id', '!=', $job->id)
+            ->where('archived', false)
+            ->get();
+
+        abort_if($siblings->isEmpty(), 422, 'Select at least one other job to combine.');
+
+        $jobs = collect([$job])->merge($siblings);
+
+        foreach ($jobs as $j) {
+            $this->authorize('update', $j);
+        }
+
+        abort_if($jobs->pluck('status')->unique()->count() > 1, 422, "Job statuses don't match — align the statuses first before combining.");
+
+        $type = $validated['doc_type'];
+        $prefix = ['quotation' => 'QT', 'proforma' => 'PI', 'invoice' => 'INV', 'receipt' => 'RC'][$type];
+        $docNumber = $this->docNumber($prefix, $job).'-C';
+
+        $amounts = $jobs->mapWithKeys(function (Job $j) use ($type, $ledger, $request, $docNumber) {
+            if (in_array($type, ['invoice', 'receipt'], true)) {
+                $entry = $type === 'invoice'
+                    ? $ledger->postInvoiceEntry($j, $docNumber, $request->user()->name)
+                    : $ledger->postReceiptEntry($j, $docNumber, $request->user()->name);
+
+                return [$j->id => $entry ? (float) $entry->amount : 0.0];
+            }
+
+            return [$j->id => (float) ($j->estimation_value ?? 0)];
+        });
+
+        $pdf = Pdf::loadView('documents.combined-pdf', [
+            'type' => $type,
+            'jobs' => $jobs,
+            'amounts' => $amounts,
+            'docNumber' => $docNumber,
+            'customer' => $job->customer,
+        ]);
+
+        $filename = "{$docNumber}_{$job->job_id}.pdf";
+        $bytes = $pdf->output();
+        $path = "{$job->job_id}/document/".time()."_{$filename}";
+        Storage::disk('public')->put($path, $bytes);
+
+        foreach ($jobs as $j) {
+            $others = $jobs->where('id', '!=', $j->id)->pluck('job_id')->join(', ');
+            $this->archiveDocument($type, $j, $docNumber, $path, $filename, $request, " (combined with {$others})");
+        }
+
+        return response($bytes, 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => "attachment; filename=\"{$filename}\"",
+        ]);
+    }
+
     /** Downloads a previously generated document from storage — see JobDocument. */
     public function showDocument(Job $job, JobDocument $document): Response
     {
@@ -87,6 +163,16 @@ class DocumentController extends Controller
         $path = "{$job->job_id}/document/".time()."_{$filename}";
         Storage::disk('public')->put($path, $bytes);
 
+        $this->archiveDocument($type, $job, $docNumber, $path, $filename, $request);
+
+        return response($bytes, 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => "attachment; filename=\"{$filename}\"",
+        ]);
+    }
+
+    private function archiveDocument(string $type, Job $job, string $docNumber, string $path, string $filename, Request $request, string $suffix = ''): void
+    {
         JobDocument::create([
             'job_id' => $job->id,
             'doc_type' => $type,
@@ -104,12 +190,7 @@ class DocumentController extends Controller
             'user_id' => $request->user()->id,
             'user_name' => $request->user()->name,
             'action' => 'document_generated',
-            'detail' => "generated {$label} ({$docNumber})",
-        ]);
-
-        return response($bytes, 200, [
-            'Content-Type' => 'application/pdf',
-            'Content-Disposition' => "attachment; filename=\"{$filename}\"",
+            'detail' => "generated {$label} ({$docNumber}){$suffix}",
         ]);
     }
 

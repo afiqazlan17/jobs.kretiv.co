@@ -300,15 +300,38 @@
 
             {{-- Right column --}}
             <div class="space-y-4">
-                <div class="bg-white shadow-sm sm:rounded-lg p-6">
+                <div class="bg-white shadow-sm sm:rounded-lg p-6" x-data="{ showCombine: false }">
                     <h3 class="text-sm font-semibold text-gray-500 uppercase mb-4">Documents</h3>
                     @can('update', $job)
-                    <div class="flex flex-wrap gap-2 mb-4">
+                    <div class="flex flex-wrap gap-2 mb-2">
                         <a href="{{ route('jobs.quotation', $job) }}" class="text-xs font-semibold px-3 py-2 rounded-md text-white hover:opacity-90" style="background: #6366F1">📄 Quotation</a>
                         <a href="{{ route('jobs.proforma', $job) }}" class="text-xs font-semibold px-3 py-2 rounded-md text-white hover:opacity-90" style="background: #3A86FF">📋 Proforma</a>
                         <a href="{{ route('jobs.invoice', $job) }}" class="text-xs font-semibold px-3 py-2 rounded-md bg-green-600 text-white hover:bg-green-700">📑 Invoice</a>
                         <a href="{{ route('jobs.receipt', $job) }}" class="text-xs font-semibold px-3 py-2 rounded-md text-white hover:opacity-90" style="background: #E85D04">🧾 Receipt</a>
                     </div>
+
+                    @if ($combineCandidates->isNotEmpty())
+                        <button type="button" @click="showCombine = !showCombine" class="text-xs font-semibold text-pink-600 hover:underline mb-4">🔗 Combine with Other Job (Same Customer)</button>
+                        <form method="POST" action="{{ route('jobs.documents.combine', $job) }}" x-show="showCombine" x-cloak class="mb-4 p-3 rounded-md bg-gray-50 border border-gray-200">
+                            @csrf
+                            <div class="space-y-1.5 mb-3">
+                                @foreach ($combineCandidates as $candidate)
+                                    <label class="flex items-center gap-2 text-xs">
+                                        <input type="checkbox" name="job_ids[]" value="{{ $candidate->id }}">
+                                        <span class="font-mono">{{ $candidate->job_id }}</span>
+                                        <span class="text-gray-500">{{ config('kretivco.departments.'.$candidate->department.'.label') }} · {{ $candidate->job_type }}</span>
+                                        <span class="text-gray-400 ml-auto">RM {{ number_format($candidate->estimation_value ?? 0, 2) }}</span>
+                                    </label>
+                                @endforeach
+                            </div>
+                            <div class="flex flex-wrap gap-2">
+                                <button type="submit" name="doc_type" value="quotation" class="text-xs font-semibold px-3 py-1.5 rounded-md text-white hover:opacity-90" style="background: #6366F1">Quotation</button>
+                                <button type="submit" name="doc_type" value="proforma" class="text-xs font-semibold px-3 py-1.5 rounded-md text-white hover:opacity-90" style="background: #3A86FF">Proforma</button>
+                                <button type="submit" name="doc_type" value="invoice" class="text-xs font-semibold px-3 py-1.5 rounded-md bg-green-600 text-white hover:bg-green-700">Invoice</button>
+                                <button type="submit" name="doc_type" value="receipt" class="text-xs font-semibold px-3 py-1.5 rounded-md text-white hover:opacity-90" style="background: #E85D04">Receipt</button>
+                            </div>
+                        </form>
+                    @endif
                     @endcan
                     @php
                         $docMeta = [
