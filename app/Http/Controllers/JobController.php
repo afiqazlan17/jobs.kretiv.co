@@ -24,6 +24,19 @@ class JobController extends Controller
         'mine' => ['title' => 'My Jobs', 'sub' => 'Jobs under your responsibility'],
     ];
 
+    /**
+     * One step back only — mirrors the forward flow (Take In / Complete)
+     * one status at a time. Potential and Cancelled have no rollback
+     * target (nothing before Potential; Cancelled is closed via its own
+     * reason-tracked flow, not the stepper).
+     *
+     * @var array<string, string>
+     */
+    public const ROLLBACK_MAP = [
+        Job::STATUS_COMPLETED => Job::STATUS_IN_PROGRESS,
+        Job::STATUS_IN_PROGRESS => Job::STATUS_POTENTIAL,
+    ];
+
     public function index(Request $request): View
     {
         $this->authorize('viewAny', Job::class);
@@ -297,6 +310,9 @@ class JobController extends Controller
         return view('jobs.show', [
             'job' => $job->load(['customer', 'activityLog' => fn ($q) => $q->orderByDesc('created_at')]),
             'vendors' => Vendor::orderBy('name')->get(),
+            'siblings' => $job->project_id
+                ? Job::where('project_id', $job->project_id)->where('id', '!=', $job->id)->get()
+                : collect(),
         ]);
     }
 
@@ -396,6 +412,156 @@ class JobController extends Controller
         ]);
 
         return back()->with('success', "{$job->job_id} marked completed.");
+    }
+
+    /**
+     * Change Current Responsible — reassigns PIC without touching status.
+     * No explicit activity log write here: JobObserver::updating() already
+     * logs any plain `pic` change (it only skips when status/archived is
+     * also dirty in the same update, which this isn't).
+     */
+    public function reassign(Request $request, Job $job): RedirectResponse
+    {
+        $this->authorize('update', $job);
+
+        $validated = $request->validate(['pic' => ['required', 'string', 'max:255']]);
+
+        $job->update(['pic' => $validated['pic']]);
+
+        return back()->with('success', "{$job->job_id} reassigned to {$validated['pic']}.");
+    }
+
+    /**
+     * Pending/Suspended — orthogonal to the pipeline status (a job can be
+     * "In Progress" and "Pending" at the same time). No automatic SLA
+     * timer, just a visible flag + reason.
+     */
+    public function hold(Request $request, Job $job): RedirectResponse
+    {
+        $this->authorize('update', $job);
+
+        $validated = $request->validate([
+            'hold_status' => ['required', 'in:'.implode(',', array_keys(config('kretivco.hold_statuses')))],
+            'hold_reason' => ['nullable', 'string', 'max:255'],
+        ]);
+
+        $job->update(['hold_status' => $validated['hold_status'], 'hold_reason' => $validated['hold_reason'] ?? null]);
+
+        $label = config("kretivco.hold_statuses.{$validated['hold_status']}.label");
+
+        ActivityLog::create([
+            'job_id' => $job->id,
+            'job_code' => $job->job_id,
+            'user_id' => $request->user()->id,
+            'user_name' => $request->user()->name,
+            'action' => 'edited',
+            'field_changed' => 'hold_status',
+            'new_value' => $validated['hold_status'],
+            'detail' => "Marked {$label}".(($validated['hold_reason'] ?? null) ? ": {$validated['hold_reason']}" : '.'),
+        ]);
+
+        return back()->with('success', "{$job->job_id} marked {$label}.");
+    }
+
+    /** Clears hold_status/hold_reason. */
+    public function resume(Request $request, Job $job): RedirectResponse
+    {
+        $this->authorize('update', $job);
+
+        abort_if($job->hold_status === null, 422, "{$job->job_id} is not on hold.");
+
+        $oldLabel = config("kretivco.hold_statuses.{$job->hold_status}.label");
+        $job->update(['hold_status' => null, 'hold_reason' => null]);
+
+        ActivityLog::create([
+            'job_id' => $job->id,
+            'job_code' => $job->job_id,
+            'user_id' => $request->user()->id,
+            'user_name' => $request->user()->name,
+            'action' => 'edited',
+            'field_changed' => 'hold_status',
+            'old_value' => $oldLabel,
+            'detail' => 'Resumed — hold cleared.',
+        ]);
+
+        return back()->with('success', "{$job->job_id} resumed.");
+    }
+
+    /** Archive — hides the job from the default Job Queue view. */
+    public function archive(Request $request, Job $job): RedirectResponse
+    {
+        $this->authorize('update', $job);
+
+        abort_if($job->archived, 422, "{$job->job_id} is already archived.");
+
+        $job->update(['archived' => true]);
+
+        ActivityLog::create([
+            'job_id' => $job->id,
+            'job_code' => $job->job_id,
+            'user_id' => $request->user()->id,
+            'user_name' => $request->user()->name,
+            'action' => 'edited',
+            'field_changed' => 'archived',
+            'new_value' => '1',
+            'detail' => 'Job archived.',
+        ]);
+
+        return redirect()->route('jobs.index')->with('success', "{$job->job_id} archived.");
+    }
+
+    /** One step back — see ROLLBACK_MAP. Used by the Progress Stepper's backward clicks. */
+    public function rollback(Request $request, Job $job): RedirectResponse
+    {
+        $this->authorize('update', $job);
+
+        $target = self::ROLLBACK_MAP[$job->status] ?? null;
+        abort_if($target === null, 422, "{$job->job_id} cannot be rolled back from its current status.");
+
+        $validated = $request->validate(['reason' => ['nullable', 'string', 'max:255']]);
+        $from = $job->status;
+
+        $job->update(['status' => $target]);
+
+        ActivityLog::create([
+            'job_id' => $job->id,
+            'job_code' => $job->job_id,
+            'user_id' => $request->user()->id,
+            'user_name' => $request->user()->name,
+            'action' => 'rollback',
+            'field_changed' => 'status',
+            'old_value' => $from,
+            'new_value' => $target,
+            'note' => $validated['reason'] ?? null,
+        ]);
+
+        $targetLabel = config("kretivco.job_statuses.{$target}.label");
+
+        return back()->with('success', "{$job->job_id} rolled back to {$targetLabel}.");
+    }
+
+    /**
+     * A note is just an activity_log row with action='note' — it merges
+     * into the same chronological Timeline as every other event, no
+     * separate notes table. Plain text for now; Phase E2 swaps the input
+     * for a rich-text editor without changing this storage shape.
+     */
+    public function addNote(Request $request, Job $job): RedirectResponse
+    {
+        $this->authorize('update', $job);
+
+        $validated = $request->validate(['note' => ['required', 'string', 'max:10000']]);
+
+        ActivityLog::create([
+            'job_id' => $job->id,
+            'job_code' => $job->job_id,
+            'user_id' => $request->user()->id,
+            'user_name' => $request->user()->name,
+            'action' => 'note',
+            'note' => $validated['note'],
+        ]);
+
+        return back()->with('success', 'Note added.');
     }
 
     /**
