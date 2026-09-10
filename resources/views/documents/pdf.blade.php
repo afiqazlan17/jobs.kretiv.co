@@ -26,9 +26,12 @@
             <div class="muted">{{ config('kretivco.brand.address_line_2') }}</div>
             <div class="muted">{{ config('kretivco.brand.email') }} · {{ config('kretivco.brand.phone') }}</div>
         </div>
+        @php
+            $noLabel = ['quotation' => 'QNo#', 'proforma' => 'Invoice No#', 'invoice' => 'Invoice No#', 'receipt' => 'Receipt No#'][$type] ?? 'No#';
+        @endphp
         <div style="text-align: right">
-            <div class="title">{{ strtoupper($type) }}</div>
-            <div>{{ $type === 'invoice' ? 'Invoice No#' : 'Receipt No#' }} {{ $docNumber }}</div>
+            <div class="title">{{ $type === 'proforma' ? 'PROFORMA INVOICE' : strtoupper($type) }}</div>
+            <div>{{ $noLabel }} {{ $docNumber }}</div>
             <div class="muted">{{ now()->format('d M Y') }}</div>
         </div>
     </div>
@@ -51,30 +54,37 @@
             <tr>
                 <td>{{ $job->job_id }}</td>
                 <td>{{ $job->job_type }}</td>
-                <td class="text-right">{{ number_format($entry->amount, 2) }}</td>
+                <td class="text-right">{{ number_format($amount, 2) }}</td>
             </tr>
         </tbody>
     </table>
 
     <table class="totals">
-        <tr><td><strong>Total</strong></td><td class="text-right"><strong>RM {{ number_format($entry->amount, 2) }}</strong></td></tr>
+        <tr><td><strong>Total</strong></td><td class="text-right"><strong>RM {{ number_format($amount, 2) }}</strong></td></tr>
     </table>
 
     <div style="clear: both"></div>
 
-    @if ($type === 'invoice' && $job->bank)
+    @if (in_array($type, ['invoice', 'proforma']) && $job->bank)
         @php $bank = config("kretivco.bank_details.{$job->bank}"); @endphp
         <div class="notes">
             <ul>
                 <li>Please make payment to {{ $bank['label'] }} {{ $bank['acct'] }} {{ $bank['name'] }}.</li>
-                <li>Please indicate invoice number when making payment to us.</li>
+                <li>Please indicate {{ $noLabel === 'QNo#' ? 'reference' : 'invoice' }} number when making payment to us.</li>
+                <li>Email us at {{ config('kretivco.brand.email') }}</li>
+            </ul>
+        </div>
+    @elseif ($type === 'receipt')
+        <div class="notes">
+            <ul>
+                <li>This receipt confirms payment received for the above job/invoice.</li>
                 <li>Email us at {{ config('kretivco.brand.email') }}</li>
             </ul>
         </div>
     @else
         <div class="notes">
             <ul>
-                <li>This receipt confirms payment received for the above job/invoice.</li>
+                <li>This quotation is valid for 30 days from the date above.</li>
                 <li>Email us at {{ config('kretivco.brand.email') }}</li>
             </ul>
         </div>

@@ -56,8 +56,11 @@ Route::middleware('auth')->group(function () {
     Route::post('/jobs/{job}/attachments', [AttachmentController::class, 'store'])->name('jobs.attachments.store');
     Route::get('/jobs/{job}/attachments/{attachmentId}', [AttachmentController::class, 'show'])->name('jobs.attachments.show');
     Route::delete('/jobs/{job}/attachments/{attachmentId}', [AttachmentController::class, 'destroy'])->name('jobs.attachments.destroy');
+    Route::get('/jobs/{job}/quotation', [DocumentController::class, 'quotation'])->name('jobs.quotation');
+    Route::get('/jobs/{job}/proforma', [DocumentController::class, 'proforma'])->name('jobs.proforma');
     Route::get('/jobs/{job}/invoice', [DocumentController::class, 'invoice'])->name('jobs.invoice');
     Route::get('/jobs/{job}/receipt', [DocumentController::class, 'receipt'])->name('jobs.receipt');
+    Route::get('/jobs/{job}/documents/{document}', [DocumentController::class, 'showDocument'])->name('jobs.documents.show');
     Route::post('/jobs/{job}/vendor-costs', [JobVendorCostController::class, 'store'])->name('jobs.vendor-costs.store');
     Route::put('/jobs/{job}/vendor-costs/{costId}', [JobVendorCostController::class, 'update'])->name('jobs.vendor-costs.update');
     Route::delete('/jobs/{job}/vendor-costs/{costId}', [JobVendorCostController::class, 'destroy'])->name('jobs.vendor-costs.destroy');
