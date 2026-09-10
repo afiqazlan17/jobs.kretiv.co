@@ -7,8 +7,11 @@ use App\Models\ActivityLog;
 use App\Models\Customer;
 use App\Models\Job;
 use App\Models\Vendor;
+use App\Support\NoteSanitizer;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Illuminate\View\View;
 
 class JobController extends Controller
@@ -543,14 +546,27 @@ class JobController extends Controller
     /**
      * A note is just an activity_log row with action='note' — it merges
      * into the same chronological Timeline as every other event, no
-     * separate notes table. Plain text for now; Phase E2 swaps the input
-     * for a rich-text editor without changing this storage shape.
+     * separate notes table. The rich-text HTML from the Quill composer is
+     * never trusted as-is (see NoteSanitizer) — the browser-side editor
+     * only shapes what a well-behaved client sends, not what's actually
+     * safe to store and later render unescaped.
      */
     public function addNote(Request $request, Job $job): RedirectResponse
     {
         $this->authorize('update', $job);
 
-        $validated = $request->validate(['note' => ['required', 'string', 'max:10000']]);
+        $validated = $request->validate([
+            'note' => ['required', 'string', 'max:20000'],
+            'attachments' => ['nullable', 'array', 'max:5'],
+            'attachments.*' => ['file', 'max:20480'],
+        ]);
+
+        $attachments = collect($request->file('attachments', []))->map(function ($file) use ($job) {
+            $filename = time().'_'.$file->getClientOriginalName();
+            $path = $file->storeAs("{$job->job_id}/log_file", $filename, 'public');
+
+            return ['id' => (string) Str::uuid(), 'name' => $file->getClientOriginalName(), 'path' => $path];
+        })->values()->all();
 
         ActivityLog::create([
             'job_id' => $job->id,
@@ -558,10 +574,24 @@ class JobController extends Controller
             'user_id' => $request->user()->id,
             'user_name' => $request->user()->name,
             'action' => 'note',
-            'note' => $validated['note'],
+            'note' => NoteSanitizer::clean($validated['note']),
+            'attachments' => $attachments,
         ]);
 
         return back()->with('success', 'Note added.');
+    }
+
+    /** Serves a note's file attachment — same auth-gated pattern as AttachmentController::show(). */
+    public function noteAttachment(Job $job, ActivityLog $log, string $attachmentId)
+    {
+        $this->authorize('view', $job);
+        abort_unless($log->job_id === $job->id, 404);
+
+        $attachment = collect($log->attachments ?? [])->firstWhere('id', $attachmentId);
+        abort_unless($attachment, 404);
+        abort_unless(Storage::disk('public')->exists($attachment['path']), 404);
+
+        return Storage::disk('public')->response($attachment['path'], $attachment['name']);
     }
 
     /**

@@ -248,9 +248,14 @@
                 @can('update', $job)
                 <div class="bg-white shadow-sm sm:rounded-lg p-6">
                     <h3 class="text-sm font-semibold text-gray-500 uppercase mb-3">New Note</h3>
-                    <form method="POST" action="{{ route('jobs.notes.store', $job) }}">
+                    <form method="POST" action="{{ route('jobs.notes.store', $job) }}" enctype="multipart/form-data"
+                          x-data="noteComposer()" x-init="mount($refs.editor)" @submit="sync()">
                         @csrf
-                        <textarea name="note" rows="3" required placeholder="Add a note about this job..." class="block w-full rounded-md border-gray-300 shadow-sm text-sm"></textarea>
+                        <div x-ref="editor"></div>
+                        <input type="hidden" name="note" :value="note">
+                        <div class="mt-2">
+                            <input type="file" name="attachments[]" multiple class="text-xs">
+                        </div>
                         <div class="mt-2 text-right">
                             <button type="submit" class="text-xs font-semibold px-3 py-2 rounded-md bg-gray-800 text-white hover:bg-gray-900">Add Note</button>
                         </div>
@@ -264,17 +269,25 @@
                         @forelse ($job->activityLog as $log)
                             @php
                                 $icon = ['created' => '📝', 'status_change' => '🔄', 'rollback' => '⏪', 'cancelled' => '✕', 'edited' => '✏️', 'completed' => '✅', 'note' => '💬', 'document_generated' => '🧾'][$log->action] ?? '•';
+                                $label = ['created' => 'created this job', 'note' => 'added a note', 'rollback' => 'rolled back the status', 'cancelled' => 'cancelled the job', 'completed' => 'completed the job', 'edited' => 'made a change'][$log->action] ?? str_replace('_', ' ', $log->action);
                             @endphp
                             <div class="border-b border-gray-100 pb-2">
                                 <div class="text-gray-800">
                                     <span class="mr-1">{{ $icon }}</span>
                                     <strong>{{ $log->user_name ?? 'System' }}</strong>
-                                    {{ $log->detail ?? ucfirst(str_replace('_', ' ', $log->action)) }}
+                                    {{ $log->detail ?? $label }}
                                 </div>
                                 @if ($log->action === 'note' && $log->note)
-                                    <div class="mt-1 text-gray-600 bg-gray-50 rounded-md px-3 py-2">{{ $log->note }}</div>
+                                    <div class="mt-1 text-gray-600 bg-gray-50 rounded-md px-3 py-2 prose-sm max-w-none">{!! $log->note !!}</div>
                                 @elseif ($log->note)
                                     <div class="mt-1 text-gray-500 italic">{{ $log->note }}</div>
+                                @endif
+                                @if (! empty($log->attachments))
+                                    <div class="mt-1.5 flex flex-wrap gap-2">
+                                        @foreach ($log->attachments as $att)
+                                            <a href="{{ route('jobs.notes.attachments.show', [$job, $log, $att['id']]) }}" class="text-xs text-indigo-600 hover:underline">📎 {{ $att['name'] }}</a>
+                                        @endforeach
+                                    </div>
                                 @endif
                                 <div class="text-xs text-gray-400 mt-1">{{ $log->created_at->format('d M Y, g:ia') }}</div>
                             </div>
