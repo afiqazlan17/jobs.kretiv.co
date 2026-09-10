@@ -62,4 +62,9 @@ class Job extends Model
     {
         return $this->hasMany(LedgerEntry::class, 'job_id', 'job_id');
     }
+
+    public function documents(): HasMany
+    {
+        return $this->hasMany(JobDocument::class);
+    }
 }

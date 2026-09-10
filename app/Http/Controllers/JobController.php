@@ -310,8 +310,26 @@ class JobController extends Controller
     {
         $this->authorize('view', $job);
 
+        $job->load([
+            'customer',
+            'activityLog' => fn ($q) => $q->orderByDesc('created_at'),
+            'documents' => fn ($q) => $q->orderByDesc('generated_at'),
+        ]);
+
+        // The newest row of a given doc_type is "current"; anything older
+        // of the same type is superseded (re-generating the doc reuses the
+        // same doc_number, so this is derived from ordering, not stored).
+        $seenDocTypes = [];
+        $documents = $job->documents->map(function ($doc) use (&$seenDocTypes) {
+            $doc->is_current = ! in_array($doc->doc_type, $seenDocTypes, true);
+            $seenDocTypes[] = $doc->doc_type;
+
+            return $doc;
+        });
+
         return view('jobs.show', [
-            'job' => $job->load(['customer', 'activityLog' => fn ($q) => $q->orderByDesc('created_at')]),
+            'job' => $job,
+            'documents' => $documents,
             'vendors' => Vendor::orderBy('name')->get(),
             'siblings' => $job->project_id
                 ? Job::where('project_id', $job->project_id)->where('id', '!=', $job->id)->get()

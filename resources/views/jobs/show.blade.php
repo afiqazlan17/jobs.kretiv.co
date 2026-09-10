@@ -302,11 +302,41 @@
             <div class="space-y-4">
                 <div class="bg-white shadow-sm sm:rounded-lg p-6">
                     <h3 class="text-sm font-semibold text-gray-500 uppercase mb-4">Documents</h3>
-                    <div class="flex flex-wrap gap-2">
-                        <a href="{{ route('jobs.invoice', $job) }}" class="text-xs font-semibold px-3 py-2 rounded-md bg-blue-600 text-white hover:bg-blue-700">Generate Invoice</a>
-                        <a href="{{ route('jobs.receipt', $job) }}" class="text-xs font-semibold px-3 py-2 rounded-md bg-green-600 text-white hover:bg-green-700">Generate Receipt</a>
+                    @can('update', $job)
+                    <div class="flex flex-wrap gap-2 mb-4">
+                        <a href="{{ route('jobs.quotation', $job) }}" class="text-xs font-semibold px-3 py-2 rounded-md text-white hover:opacity-90" style="background: #6366F1">📄 Quotation</a>
+                        <a href="{{ route('jobs.proforma', $job) }}" class="text-xs font-semibold px-3 py-2 rounded-md text-white hover:opacity-90" style="background: #3A86FF">📋 Proforma</a>
+                        <a href="{{ route('jobs.invoice', $job) }}" class="text-xs font-semibold px-3 py-2 rounded-md bg-green-600 text-white hover:bg-green-700">📑 Invoice</a>
+                        <a href="{{ route('jobs.receipt', $job) }}" class="text-xs font-semibold px-3 py-2 rounded-md text-white hover:opacity-90" style="background: #E85D04">🧾 Receipt</a>
                     </div>
-                    <p class="text-xs text-gray-400 mt-3">Quotation &amp; Proforma Invoice, and a saved document history, are coming in a follow-up update.</p>
+                    @endcan
+                    @php
+                        $docMeta = [
+                            'quotation' => ['label' => 'Quotation', 'color' => '#6366F1'],
+                            'proforma' => ['label' => 'Proforma Invoice', 'color' => '#3A86FF'],
+                            'invoice' => ['label' => 'Invoice', 'color' => '#10B981'],
+                            'receipt' => ['label' => 'Receipt', 'color' => '#E85D04'],
+                        ];
+                    @endphp
+                    @if ($documents->isEmpty())
+                        <p class="text-sm text-gray-400 italic">No documents generated yet.</p>
+                    @else
+                        <div class="space-y-2">
+                            @foreach ($documents as $doc)
+                                @php $meta = $docMeta[$doc->doc_type] ?? ['label' => $doc->doc_type, 'color' => '#6B7280']; @endphp
+                                <a href="{{ route('jobs.documents.show', [$job, $doc]) }}" class="flex items-center justify-between text-sm border border-gray-100 rounded-md px-3 py-2 hover:bg-gray-50 {{ $doc->is_current ? '' : 'opacity-50' }}">
+                                    <span>
+                                        <span class="font-semibold" style="color: {{ $meta['color'] }}">{{ $meta['label'] }}</span>
+                                        <span class="text-gray-500 font-mono text-xs ml-1">{{ $doc->doc_number }}</span>
+                                        @unless ($doc->is_current)
+                                            <span class="text-xs text-gray-400 italic ml-1">(Superseded)</span>
+                                        @endunless
+                                    </span>
+                                    <span class="text-xs text-gray-400">{{ $doc->generated_at->format('d M Y, g:ia') }} · {{ $doc->generator?->name ?? 'System' }}</span>
+                                </a>
+                            @endforeach
+                        </div>
+                    @endif
                 </div>
 
                 <div class="bg-white shadow-sm sm:rounded-lg p-6" x-data="{ showVendorForm: false, payingId: null }">
