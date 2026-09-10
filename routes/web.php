@@ -46,6 +46,12 @@ Route::middleware('auth')->group(function () {
     Route::post('/jobs/{job}/take-in', [JobController::class, 'takeIn'])->name('jobs.take-in');
     Route::post('/jobs/{job}/close-ticket', [JobController::class, 'closeTicket'])->name('jobs.close-ticket');
     Route::post('/jobs/{job}/complete', [JobController::class, 'complete'])->name('jobs.complete');
+    Route::put('/jobs/{job}/reassign', [JobController::class, 'reassign'])->name('jobs.reassign');
+    Route::post('/jobs/{job}/hold', [JobController::class, 'hold'])->name('jobs.hold');
+    Route::post('/jobs/{job}/resume', [JobController::class, 'resume'])->name('jobs.resume');
+    Route::post('/jobs/{job}/archive', [JobController::class, 'archive'])->name('jobs.archive');
+    Route::post('/jobs/{job}/rollback', [JobController::class, 'rollback'])->name('jobs.rollback');
+    Route::post('/jobs/{job}/notes', [JobController::class, 'addNote'])->name('jobs.notes.store');
     Route::post('/jobs/{job}/attachments', [AttachmentController::class, 'store'])->name('jobs.attachments.store');
     Route::get('/jobs/{job}/attachments/{attachmentId}', [AttachmentController::class, 'show'])->name('jobs.attachments.show');
     Route::delete('/jobs/{job}/attachments/{attachmentId}', [AttachmentController::class, 'destroy'])->name('jobs.attachments.destroy');
