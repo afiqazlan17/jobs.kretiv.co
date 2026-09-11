@@ -2,6 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\ActivityLog;
+use App\Models\Customer;
+use App\Models\Job;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -20,11 +23,41 @@ class UserController extends Controller
         // UserPolicy::viewAny (which stays true for everyone).
         abort_unless($request->user()->isBod(), 403);
 
-        $users = User::orderByRaw("FIELD(role, 'bod', 'dept_head', 'staff', 'intern')")
-            ->orderBy('name')
-            ->get();
+        // Sorted in PHP rather than via SQL's FIELD() — that's MySQL-only
+        // and this app's test suite runs on SQLite; ordering role rank as
+        // a Collection sort keeps it portable across both.
+        $roleOrder = array_flip([User::ROLE_BOD, User::ROLE_DEPT_HEAD, User::ROLE_STAFF, User::ROLE_INTERN]);
+        $allUsers = User::orderBy('name')->get()
+            ->sortBy(fn (User $u) => $roleOrder[$u->role] ?? 99)
+            ->values();
 
-        return view('settings.index', ['users' => $users]);
+        $showInactive = $request->boolean('show_inactive');
+        $role = $request->query('role', '');
+        $search = $request->query('search', '');
+
+        $users = $allUsers
+            ->when(! $showInactive, fn ($q) => $q->where('active', true))
+            ->when($role, fn ($q) => $q->where('role', $role))
+            ->when($search, fn ($q) => $q->filter(fn (User $u) => str_contains(strtolower($u->name), strtolower($search))
+                || str_contains(strtolower($u->email), strtolower($search))))
+            ->values();
+
+        $activeUsers = $allUsers->where('active', true);
+
+        return view('settings.index', [
+            'users' => $users,
+            'search' => $search,
+            'role' => $role,
+            'showInactive' => $showInactive,
+            'stats' => [
+                'total_active' => $activeUsers->count(),
+                'total' => $allUsers->count(),
+                'bod' => $activeUsers->where('role', User::ROLE_BOD)->count(),
+                'dept_head' => $activeUsers->where('role', User::ROLE_DEPT_HEAD)->count(),
+                'staff' => $activeUsers->where('role', User::ROLE_STAFF)->count(),
+                'intern' => $activeUsers->where('role', User::ROLE_INTERN)->count(),
+            ],
+        ]);
     }
 
     public function store(Request $request): RedirectResponse
@@ -63,6 +96,40 @@ class UserController extends Controller
         $user->update(['active' => ! $user->active]);
 
         return back()->with('success', $user->active ? "{$user->name} diaktifkan semula." : "{$user->name} dinyahaktifkan.");
+    }
+
+    /**
+     * Deletes all jobs & activity logs. Customers, users & other data
+     * (vendors, ledger entries) remain unchanged — matches the old app's
+     * dev-phase reset tool exactly. BOD-only, requires typing "RESET".
+     */
+    public function resetJobs(Request $request): RedirectResponse
+    {
+        abort_unless($request->user()->isBod(), 403);
+        $request->validate(['confirm' => ['required', 'in:RESET']]);
+
+        ActivityLog::query()->delete();
+        Job::query()->delete();
+
+        return back()->with('success', 'All jobs have been reset.');
+    }
+
+    /**
+     * Deletes all jobs, customers & activity logs. Users remain
+     * unchanged. Deleting customers cascades to their leads (leads
+     * require a customer_id, unlike jobs' nullable one). BOD-only,
+     * requires typing "RESET".
+     */
+    public function resetAllData(Request $request): RedirectResponse
+    {
+        abort_unless($request->user()->isBod(), 403);
+        $request->validate(['confirm' => ['required', 'in:RESET']]);
+
+        ActivityLog::query()->delete();
+        Job::query()->delete();
+        Customer::query()->delete();
+
+        return back()->with('success', 'All data has been reset.');
     }
 
     /**
