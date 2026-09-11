@@ -9,6 +9,10 @@ window.Alpine = Alpine;
 // threading state through x-data props. Harmless no-op on every other page.
 Alpine.store('jobActions', { panel: null });
 
+// Settings page's header "+ Add User" button and the form panel it
+// toggles live in the same two separate header/body DOM subtrees.
+Alpine.store('settingsUi', { showAdd: false });
+
 // The job detail page's "New Note" composer. Quill only shapes what a
 // well-behaved browser sends — the actual security boundary is server-side
 // (App\Support\NoteSanitizer), since the hidden `note` input's value can be

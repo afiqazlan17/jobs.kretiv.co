@@ -29,6 +29,8 @@ Route::middleware('auth')->group(function () {
     Route::post('/settings/users', [UserController::class, 'store'])->name('settings.users.store');
     Route::put('/settings/users/{user}', [UserController::class, 'update'])->name('settings.users.update');
     Route::post('/settings/users/{user}/toggle-active', [UserController::class, 'toggleActive'])->name('settings.users.toggle-active');
+    Route::post('/settings/reset-jobs', [UserController::class, 'resetJobs'])->name('settings.reset-jobs');
+    Route::post('/settings/reset-all-data', [UserController::class, 'resetAllData'])->name('settings.reset-all-data');
 
     Route::get('/customers', [CustomerController::class, 'index'])->name('customers.index');
     Route::post('/customers', [CustomerController::class, 'store'])->name('customers.store');
