@@ -5,7 +5,7 @@
     <style>
         body { font-family: Helvetica, Arial, sans-serif; font-size: 11px; color: #000000; }
         .header { display: flex; justify-content: space-between; margin-bottom: 24px; }
-        .brand { font-size: 16px; font-weight: bold; }
+        .brand { font-size: 16px; }
         .muted { color: #666666; }
         .title { font-size: 20px; font-weight: bold; letter-spacing: 1px; margin-bottom: 4px; }
         table { width: 100%; border-collapse: collapse; margin-top: 16px; }
@@ -14,7 +14,7 @@
         .text-right { text-align: right; }
         .totals { margin-top: 12px; width: 260px; float: right; }
         .totals td { border: none; padding: 4px 8px; }
-        .notes { margin-top: 60px; font-size: 10px; color: #666666; }
+        .notes { margin-top: 60px; font-size: 10px; }
         .notes li { margin-bottom: 4px; }
         .signatures { width: 100%; margin-top: 60px; border-collapse: collapse; }
         .signatures td { border: none; padding: 0; width: 50%; }
@@ -38,16 +38,16 @@
         @endphp
         <div style="text-align: right">
             <div class="title">{{ $type === 'proforma' ? 'PROFORMA INVOICE' : strtoupper($type) }}</div>
-            <div><strong>{{ $noLabel }}:</strong> {{ $docNumber }}</div>
-            <div><strong>Date:</strong> {{ now()->format('d/m/y') }}</div>
-            <div><strong>By:</strong> {{ $generatedBy }}</div>
+            <div>{{ $noLabel }}: {{ $docNumber }}</div>
+            <div>Date: {{ now()->format('d/m/y') }}</div>
+            <div>By: {{ $generatedBy }}</div>
         </div>
     </div>
 
     <hr class="header-divider">
 
     <div>
-        <strong>Customer:</strong><br>
+        Customer:<br>
         {{ $job->customer?->name }}<br>
         @if ($job->customer?->company) {{ $job->customer->company }}<br> @endif
         @if ($job->customer?->address_line_1) {{ $job->customer->address_line_1 }}<br> @endif
@@ -57,7 +57,7 @@
         @if ($job->customer?->phone) {{ $job->customer->phone }} @endif
     </div>
 
-    <div style="margin-top: 12px"><strong>Title:</strong> {{ $job->job_type }}</div>
+    <div style="margin-top: 12px">Title: {{ $job->job_type }}</div>
 
     @php
         $lineItems = $job->line_items ?? [];
@@ -110,11 +110,11 @@
 
     <table class="totals">
         @if ($showBreakdown)
-            <tr><td><strong>Subtotal:</strong></td><td class="text-right">RM {{ number_format($subtotal, 2) }}</td></tr>
-            <tr><td><strong>Delivery:</strong></td><td class="text-right">RM {{ number_format($delivery, 2) }}</td></tr>
-            <tr><td><strong>Discount:</strong></td><td class="text-right">(RM {{ number_format($discount, 2) }})</td></tr>
+            <tr><td>Subtotal:</td><td class="text-right">RM {{ number_format($subtotal, 2) }}</td></tr>
+            <tr><td>Delivery:</td><td class="text-right">RM {{ number_format($delivery, 2) }}</td></tr>
+            <tr><td>Discount:</td><td class="text-right">(RM {{ number_format($discount, 2) }})</td></tr>
         @endif
-        <tr><td><strong>Total (MYR):</strong></td><td class="text-right"><strong>RM {{ number_format($total, 2) }}</strong></td></tr>
+        <tr><td>Total (MYR):</td><td class="text-right">RM {{ number_format($total, 2) }}</td></tr>
     </table>
 
     <div style="clear: both"></div>
@@ -144,7 +144,7 @@
                 <li>{{ $note }}</li>
             @endforeach
         </ol>
-        <strong>Thank you for your business!</strong>
+        Thank you for your business!
     </div>
 
     <table class="signatures">
