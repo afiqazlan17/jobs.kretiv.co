@@ -121,10 +121,13 @@ padam job tu).
 3. **Kalau composer.json berubah** (dependency PHP baru) — `vendor/` kena
    dibina semula secara **local** (bukan di server) sebab composer tak
    boleh run di server ni:
-   - Aku run `composer install --no-dev --optimize-autoloader` di local,
-     zip folder `vendor/`, hantar fail zip.
-   - Upload ke `jobs-kretiv/` (root, bukan dalam `public/`) via File
-     Manager, extract, replace folder `vendor/` lama.
+   - Run `scripts/build-deploy-package.sh` — automate `composer install
+     --no-dev --optimize-autoloader`, strip `.git`/`tests`/`docs` dari
+     vendor packages (elak zip jadi bloated), `npm run build`, dan zip
+     kedua-dua `vendor/` dan `public/build/` sekali gus (output dalam
+     `./deploy-package/`).
+   - Upload `vendor.zip` ke `jobs-kretiv/` (root, bukan dalam `public/`) via
+     File Manager, extract, replace folder `vendor/` lama.
 4. **Kalau ada migration database baru** — run sekali via Cron Jobs:
    ```
    cd /home/cpaneluser/jobs-kretiv && /usr/local/bin/ea-php84 artisan migrate --force > /home/cpaneluser/jobs-kretiv/deploy-update.log 2>&1

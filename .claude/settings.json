@@ -1,0 +1,27 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "jq -r '.tool_input.file_path // empty' | grep -qE '\\.php$' && cd /home/user/jobs.kretiv.co && vendor/bin/pint --dirty 2>/dev/null; true",
+            "statusMessage": "Running Pint on dirty PHP files..."
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cd /home/user/jobs.kretiv.co; [ -d vendor ] || composer install --no-interaction --no-progress; [ -d node_modules ] || npm install; [ -f .env ] || cp .env.example .env; if [ -z \"$(grep '^APP_KEY=' .env 2>/dev/null | cut -d= -f2)\" ]; then php artisan key:generate --force; fi; if [ \"$(grep '^DB_CONNECTION=' .env 2>/dev/null | cut -d= -f2)\" = \"sqlite\" ] && [ ! -f database/database.sqlite ]; then touch database/database.sqlite; php artisan migrate --force; fi; true",
+            "statusMessage": "Bootstrapping Laravel project (composer/npm/env/db)..."
+          }
+        ]
+      }
+    ]
+  }
+}
