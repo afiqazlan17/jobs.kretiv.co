@@ -16,6 +16,9 @@
         .totals td { border: none; padding: 4px 8px; }
         .notes { margin-top: 60px; font-size: 10px; color: #6B6080; }
         .notes li { margin-bottom: 4px; }
+        .signatures { margin-top: 60px; display: flex; justify-content: space-between; }
+        .signatures .block { width: 45%; }
+        .signature-line { margin-top: 40px; border-top: 1px solid #1A1025; width: 200px; }
     </style>
 </head>
 <body>
@@ -36,14 +39,19 @@
             <div class="title">{{ $type === 'proforma' ? 'PROFORMA INVOICE' : strtoupper($type) }}</div>
             <div>{{ $noLabel }} {{ $docNumber }}</div>
             <div class="muted">{{ now()->format('d M Y') }}</div>
+            <div class="muted">By: {{ $generatedBy }}</div>
         </div>
     </div>
 
     <div>
-        <strong>Bill To:</strong> {{ $job->customer?->name }}<br>
+        <strong>Customer:</strong><br>
+        {{ $job->customer?->name }}<br>
         @if ($job->customer?->company) {{ $job->customer->company }}<br> @endif
+        @if ($job->customer?->fullAddress()) {{ $job->customer->fullAddress() }}<br> @endif
         @if ($job->customer?->phone) {{ $job->customer->phone }} @endif
     </div>
+
+    <div style="margin-top: 12px"><strong>Title:</strong> {{ $job->job_type }}</div>
 
     <table>
         <thead>
@@ -68,29 +76,44 @@
 
     <div style="clear: both"></div>
 
-    @if (in_array($type, ['invoice', 'proforma']) && $job->bank)
-        @php $bank = config("kretivco.bank_details.{$job->bank}"); @endphp
-        <div class="notes">
-            <ul>
-                <li>Please make payment to {{ $bank['label'] }} {{ $bank['acct'] }} {{ $bank['name'] }}.</li>
-                <li>Please indicate {{ $noLabel === 'QNo#' ? 'reference' : 'invoice' }} number when making payment to us.</li>
-                <li>Email us at {{ config('kretivco.brand.email') }}</li>
-            </ul>
+    @php
+        $bank = $job->bank ? config("kretivco.bank_details.{$job->bank}") : null;
+        $notes = [];
+        if (in_array($type, ['invoice', 'proforma', 'quotation'], true)) {
+            if ($bank) {
+                $notes[] = "Please make payment to {$bank['label']} {$bank['acct']} {$bank['name']}.";
+            }
+            $notes[] = 'Please indicate the '.($noLabel === 'QNo#' ? 'reference' : 'invoice').' number when making payment to us.';
+            $notes[] = 'Full payment needed for invoice below RM2000; 80% deposit must be paid before starting work for invoice RM2000 and above.';
+            $notes[] = 'Progress will be done within 14 days after the final draft has been confirmed by the customer.';
+            $notes[] = 'Deposit is not refundable after the booking is confirmed and the first draft has been made.';
+        } elseif ($type === 'receipt') {
+            $notes[] = 'This receipt confirms payment received for the above job/invoice.';
+        }
+        if ($type === 'quotation') {
+            $notes[] = 'This quotation is valid for 30 days from the date above.';
+        }
+        $notes[] = 'Email us at '.config('kretivco.brand.email');
+        $notes[] = 'WhatsApp us at '.config('kretivco.brand.phone');
+    @endphp
+    <div class="notes">
+        <ol>
+            @foreach ($notes as $note)
+                <li>{{ $note }}</li>
+            @endforeach
+        </ol>
+        <strong>Thank you for your business!</strong>
+    </div>
+
+    <div class="signatures">
+        <div class="block">
+            Issued by:
+            <div class="signature-line"></div>
         </div>
-    @elseif ($type === 'receipt')
-        <div class="notes">
-            <ul>
-                <li>This receipt confirms payment received for the above job/invoice.</li>
-                <li>Email us at {{ config('kretivco.brand.email') }}</li>
-            </ul>
+        <div class="block">
+            Accepted by:
+            <div class="signature-line"></div>
         </div>
-    @else
-        <div class="notes">
-            <ul>
-                <li>This quotation is valid for 30 days from the date above.</li>
-                <li>Email us at {{ config('kretivco.brand.email') }}</li>
-            </ul>
-        </div>
-    @endif
+    </div>
 </body>
 </html>

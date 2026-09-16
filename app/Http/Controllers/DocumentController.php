@@ -120,6 +120,7 @@ class DocumentController extends Controller
             'amounts' => $amounts,
             'docNumber' => $docNumber,
             'customer' => $job->customer,
+            'generatedBy' => $request->user()->name,
         ]);
 
         $filename = "{$docNumber}_{$job->job_id}.pdf";
@@ -155,6 +156,7 @@ class DocumentController extends Controller
             'job' => $job,
             'amount' => $amount,
             'docNumber' => $docNumber,
+            'generatedBy' => $request->user()->name,
         ]);
 
         $filename = "{$docNumber}_{$job->job_id}.pdf";
