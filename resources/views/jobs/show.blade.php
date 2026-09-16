@@ -43,7 +43,7 @@
 
             <div class="flex items-start justify-between flex-wrap gap-4">
                 <div>
-                    <h2 class="font-bold text-2xl text-white leading-tight font-mono">{{ $job->job_id }} | {{ $job->job_type }}</h2>
+                    <h2 class="font-bold text-2xl text-white leading-tight">{{ $job->job_id }} | {{ $job->job_type }}</h2>
                     @if ($job->customer)
                         <a href="{{ route('customers.index', ['q' => $job->customer->customer_id]) }}" class="block text-sm text-white/90 hover:underline mt-1">{{ $job->customer->customer_id }} | {{ $job->customer->company ?: $job->customer->name }}</a>
                         <div class="text-sm text-white/70">{{ $job->customer->name }}@if ($job->customer->phone) | {{ $job->customer->phone }} @endif</div>
