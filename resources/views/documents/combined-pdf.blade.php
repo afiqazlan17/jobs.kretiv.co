@@ -20,11 +20,14 @@
 </head>
 <body>
     <div class="header">
-        <div>
-            <div class="brand">{{ config('kretivco.brand.name') }} {{ config('kretivco.brand.ssm') }}</div>
-            <div class="muted">{{ config('kretivco.brand.address_line_1') }}</div>
-            <div class="muted">{{ config('kretivco.brand.address_line_2') }}</div>
-            <div class="muted">{{ config('kretivco.brand.email') }} · {{ config('kretivco.brand.phone') }}</div>
+        <div style="display: flex; align-items: center;">
+            <img src="{{ public_path('images/kretivco-logo.png') }}" style="width: 60px; height: 60px; margin-right: 12px;">
+            <div>
+                <div class="brand">{{ config('kretivco.brand.name') }} {{ config('kretivco.brand.ssm') }}</div>
+                <div class="muted">{{ config('kretivco.brand.address_line_1') }}</div>
+                <div class="muted">{{ config('kretivco.brand.address_line_2') }}</div>
+                <div class="muted">{{ config('kretivco.brand.email') }} · {{ config('kretivco.brand.phone') }}</div>
+            </div>
         </div>
         @php
             $noLabel = ['quotation' => 'QNo#', 'proforma' => 'Invoice No#', 'invoice' => 'Invoice No#', 'receipt' => 'Receipt No#'][$type] ?? 'No#';
