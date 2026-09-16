@@ -202,6 +202,8 @@ class DocumentController extends Controller
      */
     private function docNumber(string $prefix, Job $job): string
     {
-        return $prefix.'-'.now()->year.'-'.str_pad((string) preg_replace('/\D/', '', $job->job_id) ?: '001', 3, '0', STR_PAD_LEFT);
+        $sequence = last(explode('-', $job->job_id)) ?: '001';
+
+        return $prefix.'-'.now()->year.'-'.str_pad($sequence, 3, '0', STR_PAD_LEFT);
     }
 }
