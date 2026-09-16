@@ -16,8 +16,8 @@
         .totals td { border: none; padding: 4px 8px; }
         .notes { margin-top: 60px; font-size: 10px; color: #666666; }
         .notes li { margin-bottom: 4px; }
-        .signatures { margin-top: 60px; display: flex; justify-content: space-between; }
-        .signatures .block { width: 45%; }
+        .signatures { width: 100%; margin-top: 60px; border-collapse: collapse; }
+        .signatures td { border: none; padding: 0; width: 50%; }
         .signature-line { margin-top: 40px; border-top: 1px solid #000000; width: 200px; }
         .header-divider { border: none; border-top: 1px solid #cccccc; margin: 16px 0 24px; }
     </style>
@@ -144,15 +144,17 @@
         <strong>Thank you for your business!</strong>
     </div>
 
-    <div class="signatures">
-        <div class="block">
-            Issued by:
-            <div class="signature-line"></div>
-        </div>
-        <div class="block">
-            Accepted by:
-            <div class="signature-line"></div>
-        </div>
-    </div>
+    <table class="signatures">
+        <tr>
+            <td>
+                Issued by:
+                <div class="signature-line"></div>
+            </td>
+            <td>
+                Accepted by:
+                <div class="signature-line"></div>
+            </td>
+        </tr>
+    </table>
 </body>
 </html>
