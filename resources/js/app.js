@@ -45,4 +45,11 @@ window.noteComposer = function () {
     };
 };
 
+// Job detail page's "Line Items" editor (quotation/proforma PDF breakdown).
+window.lineItemsForm = function (initialRows) {
+    return {
+        rows: initialRows.length ? initialRows : [],
+    };
+};
+
 Alpine.start();

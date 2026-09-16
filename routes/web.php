@@ -45,6 +45,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/jobs', [JobController::class, 'store'])->name('jobs.store');
     Route::get('/jobs/{job}', [JobController::class, 'show'])->name('jobs.show');
     Route::put('/jobs/{job}', [JobController::class, 'update'])->name('jobs.update');
+    Route::put('/jobs/{job}/line-items', [JobController::class, 'updateLineItems'])->name('jobs.line-items.update');
     Route::post('/jobs/{job}/take-in', [JobController::class, 'takeIn'])->name('jobs.take-in');
     Route::post('/jobs/{job}/close-ticket', [JobController::class, 'closeTicket'])->name('jobs.close-ticket');
     Route::post('/jobs/{job}/complete', [JobController::class, 'complete'])->name('jobs.complete');

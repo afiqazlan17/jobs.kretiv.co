@@ -172,6 +172,34 @@
                                 </div>
                             </div>
 
+                            {{-- Line items — optional breakdown shown on the quotation/proforma PDF instead of a single collapsed row --}}
+                            <div class="mb-3">
+                                <x-input-label value="Line Items (optional — shown on the quotation PDF)" />
+                                <div class="mt-1 space-y-1.5">
+                                    <template x-for="(row, idx) in perDept.{{ $key }}.lineItems" :key="idx">
+                                        <div class="grid grid-cols-12 gap-1.5 items-center">
+                                            <input type="text" :name="`per_dept[{{ $key }}][line_items][${idx}][desc]`" x-model="row.desc" :disabled="!depts.includes('{{ $key }}')" placeholder="Description" class="col-span-5 rounded-md border-gray-300 shadow-sm text-xs">
+                                            <input type="text" :name="`per_dept[{{ $key }}][line_items][${idx}][size]`" x-model="row.size" :disabled="!depts.includes('{{ $key }}')" placeholder="Size" class="col-span-2 rounded-md border-gray-300 shadow-sm text-xs">
+                                            <input type="number" step="1" min="0" :name="`per_dept[{{ $key }}][line_items][${idx}][qty]`" x-model="row.qty" :disabled="!depts.includes('{{ $key }}')" placeholder="Unit" class="col-span-2 rounded-md border-gray-300 shadow-sm text-xs">
+                                            <input type="number" step="0.01" min="0" :name="`per_dept[{{ $key }}][line_items][${idx}][price]`" x-model="row.price" :disabled="!depts.includes('{{ $key }}')" placeholder="Price" class="col-span-2 rounded-md border-gray-300 shadow-sm text-xs">
+                                            <button type="button" @click="perDept.{{ $key }}.lineItems.splice(idx, 1)" class="col-span-1 text-red-500 text-xs">✕</button>
+                                        </div>
+                                    </template>
+                                    <button type="button" @click="perDept.{{ $key }}.lineItems.push({ desc: '', size: '', qty: 1, price: 0 })" class="text-xs font-semibold text-indigo-600 hover:underline">+ Add Line Item</button>
+                                </div>
+                            </div>
+
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
+                                <div>
+                                    <x-input-label value="Delivery (RM)" />
+                                    <input type="number" step="0.01" min="0" name="per_dept[{{ $key }}][delivery_amount]" :disabled="!depts.includes('{{ $key }}')" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm text-xs">
+                                </div>
+                                <div>
+                                    <x-input-label value="Discount (RM)" />
+                                    <input type="number" step="0.01" min="0" name="per_dept[{{ $key }}][discount_amount]" :disabled="!depts.includes('{{ $key }}')" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm text-xs">
+                                </div>
+                            </div>
+
                             <div>
                                 <x-input-label value="Notes" />
                                 <textarea name="per_dept[{{ $key }}][notes]" :disabled="!depts.includes('{{ $key }}')" rows="2" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm text-xs"></textarea>
@@ -197,7 +225,7 @@
                 packageCatalog,
                 depts: {{ old('departments') ? json_encode(old('departments')) : '[]' }},
                 perDept: Object.fromEntries(departmentKeys.map(k => [k, {
-                    jobTypeCategory: 'client_project', productLine: '', segment: '', pkg: '', jobType: '',
+                    jobTypeCategory: 'client_project', productLine: '', segment: '', pkg: '', jobType: '', lineItems: [],
                 }])),
                 customerId: '{{ old('customer_id') }}',
                 customerQuery: '',

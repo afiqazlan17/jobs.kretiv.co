@@ -469,6 +469,42 @@
                     @endif
                 </div>
 
+                @can('update', $job)
+                <div class="bg-white shadow-sm sm:rounded-lg p-6"
+                     x-data="lineItemsForm({{ collect($job->line_items ?? [])->map(fn ($i) => ['desc' => $i['desc'] ?? '', 'size' => $i['size'] ?? '', 'qty' => $i['qty'] ?? 1, 'price' => $i['price'] ?? 0])->toJson() }})">
+                    <h3 class="text-sm font-semibold text-gray-500 uppercase mb-4">Line Items — shown on Quotation/Proforma PDF</h3>
+                    <form method="POST" action="{{ route('jobs.line-items.update', $job) }}">
+                        @csrf
+                        @method('PUT')
+                        <div class="space-y-1.5">
+                            <template x-for="(row, idx) in rows" :key="idx">
+                                <div class="grid grid-cols-12 gap-1.5 items-center">
+                                    <input type="text" :name="`line_items[${idx}][desc]`" x-model="row.desc" placeholder="Description" class="col-span-5 rounded-md border-gray-300 shadow-sm text-xs">
+                                    <input type="text" :name="`line_items[${idx}][size]`" x-model="row.size" placeholder="Size" class="col-span-2 rounded-md border-gray-300 shadow-sm text-xs">
+                                    <input type="number" step="1" min="0" :name="`line_items[${idx}][qty]`" x-model="row.qty" placeholder="Unit" class="col-span-2 rounded-md border-gray-300 shadow-sm text-xs">
+                                    <input type="number" step="0.01" min="0" :name="`line_items[${idx}][price]`" x-model="row.price" placeholder="Price" class="col-span-2 rounded-md border-gray-300 shadow-sm text-xs">
+                                    <button type="button" @click="rows.splice(idx, 1)" class="col-span-1 text-red-500 text-xs">✕</button>
+                                </div>
+                            </template>
+                            <button type="button" @click="rows.push({ desc: '', size: '', qty: 1, price: 0 })" class="text-xs font-semibold text-indigo-600 hover:underline">+ Add Line Item</button>
+                        </div>
+                        <div class="grid grid-cols-2 gap-3 mt-3">
+                            <div>
+                                <label class="text-xs text-gray-500">Delivery (RM)</label>
+                                <input type="number" step="0.01" min="0" name="delivery_amount" value="{{ $job->delivery_amount }}" class="block w-full rounded-md border-gray-300 shadow-sm text-sm">
+                            </div>
+                            <div>
+                                <label class="text-xs text-gray-500">Discount (RM)</label>
+                                <input type="number" step="0.01" min="0" name="discount_amount" value="{{ $job->discount_amount }}" class="block w-full rounded-md border-gray-300 shadow-sm text-sm">
+                            </div>
+                        </div>
+                        <div class="mt-3 text-right">
+                            <button type="submit" class="text-xs font-semibold px-3 py-2 rounded-md bg-gray-800 text-white hover:bg-gray-900">Save Line Items</button>
+                        </div>
+                    </form>
+                </div>
+                @endcan
+
                 <div class="bg-white shadow-sm sm:rounded-lg p-6">
                     <h3 class="text-sm font-semibold text-gray-500 uppercase mb-4">Attachments</h3>
                     <div class="space-y-2 text-sm mb-4">

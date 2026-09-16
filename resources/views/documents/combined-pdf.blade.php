@@ -73,8 +73,21 @@
         </tbody>
     </table>
 
+    @php
+        $showBreakdown = in_array($type, ['quotation', 'proforma'], true);
+        $subtotal = $total;
+        $delivery = $showBreakdown ? (float) $jobs->sum('delivery_amount') : 0;
+        $discount = $showBreakdown ? (float) $jobs->sum('discount_amount') : 0;
+        $grandTotal = $showBreakdown ? $subtotal + $delivery - $discount : $total;
+    @endphp
+
     <table class="totals">
-        <tr><td><strong>Total</strong></td><td class="text-right"><strong>RM {{ number_format($total, 2) }}</strong></td></tr>
+        @if ($showBreakdown)
+            <tr><td>Subtotal</td><td class="text-right">RM {{ number_format($subtotal, 2) }}</td></tr>
+            <tr><td>Delivery</td><td class="text-right">RM {{ number_format($delivery, 2) }}</td></tr>
+            <tr><td>Discount</td><td class="text-right">(RM {{ number_format($discount, 2) }})</td></tr>
+        @endif
+        <tr><td><strong>Total (MYR)</strong></td><td class="text-right"><strong>RM {{ number_format($grandTotal, 2) }}</strong></td></tr>
     </table>
 
     <div style="clear: both"></div>

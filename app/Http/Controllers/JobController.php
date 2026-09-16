@@ -165,6 +165,13 @@ class JobController extends Controller
             'per_dept.*.deadline' => ['nullable', 'date'],
             'per_dept.*.notes' => ['nullable', 'string'],
             'per_dept.*.estimation_value' => ['nullable', 'numeric', 'min:0'],
+            'per_dept.*.delivery_amount' => ['nullable', 'numeric', 'min:0'],
+            'per_dept.*.discount_amount' => ['nullable', 'numeric', 'min:0'],
+            'per_dept.*.line_items' => ['nullable', 'array'],
+            'per_dept.*.line_items.*.desc' => ['nullable', 'string', 'max:1000'],
+            'per_dept.*.line_items.*.size' => ['nullable', 'string', 'max:255'],
+            'per_dept.*.line_items.*.qty' => ['nullable', 'numeric', 'min:0'],
+            'per_dept.*.line_items.*.price' => ['nullable', 'numeric', 'min:0'],
         ]);
 
         // Defense in depth: the create form only offers departments the
@@ -216,7 +223,7 @@ class JobController extends Controller
                 $prepared[$dept] = [
                     'job_type' => $jobType,
                     'estimation_value' => $fields['estimation_value'] ?? null,
-                    'line_items' => [],
+                    'line_items' => $this->buildLineItems($fields['line_items'] ?? []),
                 ];
             }
         }
@@ -245,6 +252,8 @@ class JobController extends Controller
                 'deadline' => $fields['deadline'] ?? null,
                 'notes' => $fields['notes'] ?? null,
                 'estimation_value' => $resolved['estimation_value'],
+                'delivery_amount' => $fields['delivery_amount'] ?? null,
+                'discount_amount' => $fields['discount_amount'] ?? null,
                 'line_items' => $resolved['line_items'],
                 'status' => Job::STATUS_POTENTIAL,
                 'created_by' => $request->user()->id,
@@ -306,6 +315,29 @@ class JobController extends Controller
         return array_map(fn (string $item) => str_replace('{pcs}', (string) $tier['pcs'], $item), $pkg['items']);
     }
 
+    /**
+     * Normalizes staff-entered line item rows into the same shape used by
+     * package-tier jobs ({item, desc, size, qty, price}) — rows left blank
+     * (no description) are dropped rather than stored as empty entries.
+     *
+     * @param  array<int, array<string, mixed>>  $rows
+     * @return array<int, array<string, mixed>>
+     */
+    private function buildLineItems(array $rows): array
+    {
+        return collect($rows)
+            ->filter(fn ($row) => trim($row['desc'] ?? '') !== '')
+            ->map(fn ($row) => [
+                'item' => trim($row['desc']),
+                'desc' => trim($row['desc']),
+                'size' => trim($row['size'] ?? ''),
+                'qty' => (float) ($row['qty'] ?? 1),
+                'price' => (float) ($row['price'] ?? 0),
+            ])
+            ->values()
+            ->all();
+    }
+
     public function show(Job $job): View
     {
         $this->authorize('view', $job);
@@ -359,6 +391,30 @@ class JobController extends Controller
         $job->update($validated);
 
         return back()->with('success', "{$job->job_id} updated.");
+    }
+
+    /** Replaces the job's line-item breakdown and delivery/discount amounts shown on quotation/proforma PDFs. */
+    public function updateLineItems(Request $request, Job $job): RedirectResponse
+    {
+        $this->authorize('update', $job);
+
+        $validated = $request->validate([
+            'delivery_amount' => ['nullable', 'numeric', 'min:0'],
+            'discount_amount' => ['nullable', 'numeric', 'min:0'],
+            'line_items' => ['nullable', 'array'],
+            'line_items.*.desc' => ['nullable', 'string', 'max:1000'],
+            'line_items.*.size' => ['nullable', 'string', 'max:255'],
+            'line_items.*.qty' => ['nullable', 'numeric', 'min:0'],
+            'line_items.*.price' => ['nullable', 'numeric', 'min:0'],
+        ]);
+
+        $job->update([
+            'delivery_amount' => $validated['delivery_amount'] ?? null,
+            'discount_amount' => $validated['discount_amount'] ?? null,
+            'line_items' => $this->buildLineItems($validated['line_items'] ?? []),
+        ]);
+
+        return back()->with('success', "{$job->job_id} line items updated.");
     }
 
     /** Claims the job — sets PIC and moves potential -> in_progress. */

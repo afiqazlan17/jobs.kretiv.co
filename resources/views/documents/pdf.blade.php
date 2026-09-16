@@ -53,25 +53,60 @@
 
     <div style="margin-top: 12px"><strong>Title:</strong> {{ $job->job_type }}</div>
 
+    @php
+        $lineItems = $job->line_items ?? [];
+        $showBreakdown = in_array($type, ['quotation', 'proforma'], true);
+        $subtotal = $showBreakdown && count($lineItems)
+            ? collect($lineItems)->sum(fn ($i) => (float) ($i['qty'] ?? 1) * (float) ($i['price'] ?? 0))
+            : $amount;
+        $delivery = $showBreakdown ? (float) ($job->delivery_amount ?? 0) : 0;
+        $discount = $showBreakdown ? (float) ($job->discount_amount ?? 0) : 0;
+        $total = $showBreakdown ? $subtotal + $delivery - $discount : $amount;
+    @endphp
+
     <table>
         <thead>
             <tr>
-                <th>Job ID</th>
+                <th>No</th>
                 <th>Description</th>
+                <th>Size</th>
+                <th>Unit</th>
+                <th class="text-right">Price (RM)</th>
                 <th class="text-right">Amount (RM)</th>
             </tr>
         </thead>
         <tbody>
-            <tr>
-                <td>{{ $job->job_id }}</td>
-                <td>{{ $job->job_type }}</td>
-                <td class="text-right">{{ number_format($amount, 2) }}</td>
-            </tr>
+            @if (count($lineItems))
+                @foreach ($lineItems as $i => $item)
+                    <tr>
+                        <td>{{ $i + 1 }}</td>
+                        <td>{{ $item['desc'] ?? $item['item'] ?? '' }}</td>
+                        <td>{{ $item['size'] ?: '—' }}</td>
+                        <td>{{ $item['qty'] ?? 1 }}</td>
+                        <td class="text-right">{{ number_format($item['price'] ?? 0, 2) }}</td>
+                        <td class="text-right">{{ number_format(($item['qty'] ?? 1) * ($item['price'] ?? 0), 2) }}</td>
+                    </tr>
+                @endforeach
+            @else
+                <tr>
+                    <td>1</td>
+                    <td>{{ $job->job_type }}</td>
+                    <td>—</td>
+                    <td>1</td>
+                    <td class="text-right">{{ number_format($amount, 2) }}</td>
+                    <td class="text-right">{{ number_format($amount, 2) }}</td>
+                </tr>
+            @endif
         </tbody>
     </table>
 
     <table class="totals">
-        <tr><td><strong>Total</strong></td><td class="text-right"><strong>RM {{ number_format($amount, 2) }}</strong></td></tr>
+        @if ($showBreakdown)
+            <tr><td>Subtotal</td><td class="text-right">RM {{ number_format($subtotal, 2) }}</td></tr>
+            <tr><td>Delivery</td><td class="text-right">RM {{ number_format($delivery, 2) }}</td></tr>
+            <tr><td>Discount</td><td class="text-right">(RM {{ number_format($discount, 2) }})</td></tr>
+        @endif
+        <tr><td><strong>Total (MYR)</strong></td><td class="text-right"><strong>RM {{ number_format($total, 2) }}</strong></td></tr>
     </table>
 
     <div style="clear: both"></div>

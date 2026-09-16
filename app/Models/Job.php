@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 #[Fillable([
     'job_id', 'customer_id', 'department', 'job_type', 'job_type_category', 'status', 'closed_from_status',
-    'estimation_value', 'final_value', 'pic', 'start_date', 'deadline', 'notes', 'drive_link', 'priority',
+    'estimation_value', 'delivery_amount', 'discount_amount', 'final_value', 'pic', 'start_date', 'deadline', 'notes', 'drive_link', 'priority',
     'archived', 'cancel_reason', 'cancel_reason_text', 'source', 'special_arrangement', 'installments',
     'cost_breakdown', 'baki_kretivco', 'line_items', 'attachments', 'bank', 'hold_status', 'hold_reason',
     'project_id', 'created_by', 'vendor_costs',
@@ -28,6 +28,8 @@ class Job extends Model
     {
         return [
             'estimation_value' => 'decimal:2',
+            'delivery_amount' => 'decimal:2',
+            'discount_amount' => 'decimal:2',
             'final_value' => 'decimal:2',
             'baki_kretivco' => 'decimal:2',
             'start_date' => 'date',
