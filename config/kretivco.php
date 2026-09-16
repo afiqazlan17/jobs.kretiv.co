@@ -98,11 +98,15 @@ return [
     // "in_progress". It stays there for the whole time the work is
     // actually happening, and moves to "completed" when staff close the
     // ticket.
+    // Each status carries an icon alongside its color so a status badge
+    // never depends on color alone to be told apart — Potential (indigo)
+    // and In Progress (blue) sit close enough in hue that color-only
+    // badges were hard to distinguish at a glance.
     'job_statuses' => [
-        'potential' => ['label' => 'Potential', 'color' => '#6366F1'],
-        'in_progress' => ['label' => 'In Progress', 'color' => '#3A86FF'],
-        'completed' => ['label' => 'Completed', 'color' => '#6B7280'],
-        'cancelled' => ['label' => 'Cancelled', 'color' => '#EF4444'],
+        'potential' => ['label' => 'Potential', 'color' => '#6366F1', 'icon' => '🎯'],
+        'in_progress' => ['label' => 'In Progress', 'color' => '#3A86FF', 'icon' => '⚡'],
+        'completed' => ['label' => 'Completed', 'color' => '#6B7280', 'icon' => '✓'],
+        'cancelled' => ['label' => 'Cancelled', 'color' => '#EF4444', 'icon' => '🚫'],
     ],
 
     // Orthogonal to job_statuses above — a job can be "In Progress" and
