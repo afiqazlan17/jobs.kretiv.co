@@ -9,3 +9,17 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Quill's default .ql-formats spacing reads as one unbroken row of icons
+   once Tailwind's preflight resets margins — add a visible divider between
+   each toolbar group (text style / lists / colour+link+clear) instead. */
+.ql-toolbar.ql-snow .ql-formats {
+    margin-right: 12px !important;
+    padding-right: 12px;
+    border-right: 1px solid #E5E7EB;
+}
+.ql-toolbar.ql-snow .ql-formats:last-child {
+    margin-right: 0;
+    padding-right: 0;
+    border-right: none;
+}

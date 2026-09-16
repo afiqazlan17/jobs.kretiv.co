@@ -18,41 +18,81 @@
             <div class="bg-white rounded-xl p-5 shadow-sm border-l-4" style="border-color:#E91E63">
                 <div class="flex items-center gap-2 mb-1.5"><span>💼</span><span class="text-[11px] font-medium text-gray-400 uppercase tracking-wide">Total Jobs</span></div>
                 <div class="text-[28px] font-bold leading-tight">{{ $stats['total'] }}</div>
-                <div class="text-xs text-gray-500 mt-1">{{ $stats['completed_count'] }} completed</div>
+                <div class="text-xs text-gray-600 mt-1">{{ $stats['completed_count'] }} completed</div>
             </div>
             <div class="bg-white rounded-xl p-5 shadow-sm border-l-4" style="border-color:#6366F1">
                 <div class="flex items-center gap-2 mb-1.5"><span>🎯</span><span class="text-[11px] font-medium text-gray-400 uppercase tracking-wide">Potential</span></div>
                 <div class="text-[28px] font-bold leading-tight">{{ $stats['potential_count'] }}</div>
-                <div class="text-xs text-gray-500 mt-1">RM {{ number_format($stats['potential_value'], 2) }}</div>
+                <div class="text-xs text-gray-600 mt-1">RM {{ number_format($stats['potential_value'], 2) }}</div>
             </div>
             <div class="bg-white rounded-xl p-5 shadow-sm border-l-4" style="border-color:#3A86FF">
                 <div class="flex items-center gap-2 mb-1.5"><span>⚡</span><span class="text-[11px] font-medium text-gray-400 uppercase tracking-wide">In Progress</span></div>
                 <div class="text-[28px] font-bold leading-tight">{{ $stats['in_progress_count'] }}</div>
-                <div class="text-xs text-gray-500 mt-1">Claimed &amp; working</div>
+                <div class="text-xs text-gray-600 mt-1">Claimed &amp; working</div>
             </div>
             <div class="bg-white rounded-xl p-5 shadow-sm border-l-4" style="border-color:#EF4444">
                 <div class="flex items-center gap-2 mb-1.5"><span>🚫</span><span class="text-[11px] font-medium text-gray-400 uppercase tracking-wide">Cancelled</span></div>
                 <div class="text-[28px] font-bold leading-tight">{{ $stats['cancelled_count'] }}</div>
-                <div class="text-xs text-gray-500 mt-1">Not proceeded</div>
+                <div class="text-xs text-gray-600 mt-1">Not proceeded</div>
             </div>
+        </div>
+
+        {{-- Needs Attention — surfaced right under the stat cards so the
+        most actionable jobs (overdue / due soon) sit above the fold,
+        instead of being the last thing on the page. --}}
+        <div class="bg-white rounded-xl shadow-sm p-5">
+            <div class="flex items-center gap-2 mb-4">
+                <span class="text-red-500">⚠</span>
+                <span class="text-base font-bold">Needs Attention</span>
+                @if ($alerts->isNotEmpty())
+                    <span class="text-[11px] font-semibold text-white bg-red-500 rounded-full px-2.5 py-0.5">{{ $alerts->count() }}</span>
+                @endif
+            </div>
+            @if ($alerts->isEmpty())
+                <div class="py-8 text-center text-gray-400 text-sm">No jobs nearing deadline. Great job!</div>
+            @else
+                <div class="flex flex-col gap-2">
+                    @foreach ($alerts as $job)
+                        @php
+                            $days = (int) now()->startOfDay()->diffInDays($job->deadline, false);
+                            $over = $days < 0;
+                            $dept = config('kretivco.departments.'.$job->department);
+                        @endphp
+                        <a href="{{ route('jobs.show', $job) }}" class="flex items-center gap-3 px-4 py-3 rounded-lg border-l-4" style="border-color:{{ $over ? '#EF4444' : '#F59E0B' }};background:{{ $over ? '#EF444408' : '#F59E0B08' }}">
+                            <div class="flex-1 min-w-0">
+                                <div class="flex items-center gap-2">
+                                    <span class="font-mono text-xs font-semibold">{{ $job->job_id }}</span>
+                                    @if ($dept)
+                                        <span class="text-[11px] font-semibold rounded px-2 py-0.5" style="color:{{ $dept['color'] }};background:{{ $dept['color'] }}15">{{ $dept['label'] }}</span>
+                                    @endif
+                                </div>
+                                <div class="text-sm mt-0.5 truncate">{{ $job->customer?->name }}</div>
+                            </div>
+                            <div class="text-right text-sm font-semibold shrink-0" style="color:{{ $over ? '#EF4444' : '#F59E0B' }}">
+                                {{ $over ? abs($days).' days overdue' : $days.' days left' }}
+                            </div>
+                        </a>
+                    @endforeach
+                </div>
+            @endif
         </div>
 
         {{-- Row 2: Financial summary --}}
         <div class="flex flex-wrap gap-4">
-            <div class="flex-1 min-w-[180px] bg-white rounded-xl shadow-sm p-5">
+            <div class="flex-1 min-w-[180px] bg-white rounded-xl shadow-sm p-5 border-l-4" style="border-color:#E91E63">
                 <div class="text-[11px] font-medium text-gray-400 uppercase tracking-wide mb-2">Pipeline Value</div>
                 <div class="text-2xl font-bold" style="color:#E91E63">RM {{ number_format($stats['pipeline_value'], 2) }}</div>
-                <div class="text-xs text-gray-500 mt-1">Potential + In Progress</div>
+                <div class="text-xs text-gray-600 mt-1">Potential + In Progress</div>
             </div>
-            <div class="flex-1 min-w-[180px] bg-white rounded-xl shadow-sm p-5">
+            <div class="flex-1 min-w-[180px] bg-white rounded-xl shadow-sm p-5 border-l-4" style="border-color:#6366F1">
                 <div class="text-[11px] font-medium text-gray-400 uppercase tracking-wide mb-2">Potential Value</div>
                 <div class="text-2xl font-bold" style="color:#6366F1">RM {{ number_format($stats['potential_value'], 2) }}</div>
-                <div class="text-xs text-gray-500 mt-1">Not confirmed yet</div>
+                <div class="text-xs text-gray-600 mt-1">Not confirmed yet</div>
             </div>
-            <div class="flex-1 min-w-[180px] bg-white rounded-xl shadow-sm p-5">
+            <div class="flex-1 min-w-[180px] bg-white rounded-xl shadow-sm p-5 border-l-4" style="border-color:#10B981">
                 <div class="text-[11px] font-medium text-gray-400 uppercase tracking-wide mb-2">Actual Revenue</div>
                 <div class="text-2xl font-bold" style="color:#10B981">RM {{ number_format($stats['actual_revenue'], 2) }}</div>
-                <div class="text-xs text-gray-500 mt-1">{{ $stats['completed_count'] }} jobs completed</div>
+                <div class="text-xs text-gray-600 mt-1">{{ $stats['completed_count'] }} jobs completed</div>
             </div>
         </div>
 
@@ -146,7 +186,7 @@
                                 <span class="text-[11px] font-semibold rounded px-2 py-0.5" style="color:{{ $dept['color'] }};background:{{ $dept['color'] }}15">{{ $dept['label'] }}</span>
                             @endif
                             @if ($st)
-                                <span class="text-xs font-semibold rounded-full px-3 py-1" style="color:{{ $st['color'] }};background:{{ $st['color'] }}15">{{ $st['label'] }}</span>
+                                <span class="text-xs font-semibold rounded-full px-3 py-1" style="color:{{ $st['color'] }};background:{{ $st['color'] }}15">{{ $st['icon'] ?? '' }} {{ $st['label'] }}</span>
                             @endif
                             <span class="font-semibold text-sm min-w-[90px] text-right">RM {{ number_format($job->estimation_value ?? 0, 2) }}</span>
                             <span class="text-xs text-gray-400 min-w-[80px]">{{ $job->created_at->format('d M Y') }}</span>
@@ -156,42 +196,5 @@
             @endif
         </div>
 
-        {{-- Row 5: Needs Attention --}}
-        <div class="bg-white rounded-xl shadow-sm p-5">
-            <div class="flex items-center gap-2 mb-4">
-                <span class="text-red-500">⚠</span>
-                <span class="text-base font-bold">Needs Attention</span>
-                @if ($alerts->isNotEmpty())
-                    <span class="text-[11px] font-semibold text-white bg-red-500 rounded-full px-2.5 py-0.5">{{ $alerts->count() }}</span>
-                @endif
-            </div>
-            @if ($alerts->isEmpty())
-                <div class="py-8 text-center text-gray-400 text-sm">No jobs nearing deadline. Great job!</div>
-            @else
-                <div class="flex flex-col gap-2">
-                    @foreach ($alerts as $job)
-                        @php
-                            $days = (int) now()->startOfDay()->diffInDays($job->deadline, false);
-                            $over = $days < 0;
-                            $dept = config('kretivco.departments.'.$job->department);
-                        @endphp
-                        <a href="{{ route('jobs.show', $job) }}" class="flex items-center gap-3 px-4 py-3 rounded-lg border-l-4" style="border-color:{{ $over ? '#EF4444' : '#F59E0B' }};background:{{ $over ? '#EF444408' : '#F59E0B08' }}">
-                            <div class="flex-1 min-w-0">
-                                <div class="flex items-center gap-2">
-                                    <span class="font-mono text-xs font-semibold">{{ $job->job_id }}</span>
-                                    @if ($dept)
-                                        <span class="text-[11px] font-semibold rounded px-2 py-0.5" style="color:{{ $dept['color'] }};background:{{ $dept['color'] }}15">{{ $dept['label'] }}</span>
-                                    @endif
-                                </div>
-                                <div class="text-sm mt-0.5 truncate">{{ $job->customer?->name }}</div>
-                            </div>
-                            <div class="text-right text-sm font-semibold shrink-0" style="color:{{ $over ? '#EF4444' : '#F59E0B' }}">
-                                {{ $over ? abs($days).' days overdue' : $days.' days left' }}
-                            </div>
-                        </a>
-                    @endforeach
-                </div>
-            @endif
-        </div>
     </div>
 </x-app-layout>

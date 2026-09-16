@@ -63,11 +63,11 @@
                                     ['k' => 'value', 'l' => 'Est. Value'],
                                     ['k' => null, 'l' => 'PIC'],
                                     ['k' => 'deadline', 'l' => 'Deadline'],
-                                    ['k' => 'touched', 'l' => 'Last Changed'],
+                                    ['k' => 'touched', 'l' => 'Last Changed', 'hideBelow2xl' => true],
                                 ];
                             @endphp
                             @foreach ($cols as $col)
-                                <th class="px-4 py-3 whitespace-nowrap">
+                                <th class="px-4 py-3 whitespace-nowrap {{ !empty($col['hideBelow2xl']) ? 'hidden 2xl:table-cell' : '' }}">
                                     @if ($col['k'])
                                         @php $nextDir = ($sortCol === $col['k'] && $sortDir === 'asc') ? 'desc' : 'asc'; @endphp
                                         <a href="{{ request()->fullUrlWithQuery(['sort' => $col['k'], 'dir' => $nextDir]) }}" class="hover:text-gray-700">
@@ -113,7 +113,7 @@
                                 </td>
                                 <td class="px-4 py-3 whitespace-nowrap">
                                     @if ($st)
-                                        <span class="text-xs font-semibold rounded-full px-3 py-1" style="color:{{ $st['color'] }};background:{{ $st['color'] }}15">{{ $st['label'] }}</span>
+                                        <span class="text-xs font-semibold rounded-full px-3 py-1" style="color:{{ $st['color'] }};background:{{ $st['color'] }}15">{{ $st['icon'] ?? '' }} {{ $st['label'] }}</span>
                                     @endif
                                     @if ($job->hold_status)
                                         @php $hs = config('kretivco.hold_statuses.'.$job->hold_status); @endphp
@@ -140,7 +140,7 @@
                                         <span class="text-xs text-gray-400">—</span>
                                     @endif
                                 </td>
-                                <td class="px-4 py-3 text-gray-400 whitespace-nowrap text-xs">{{ $job->last_touched?->format('d M Y, g:ia') ?? '—' }}</td>
+                                <td class="px-4 py-3 text-gray-400 whitespace-nowrap text-xs hidden 2xl:table-cell">{{ $job->last_touched?->format('d M Y, g:ia') ?? '—' }}</td>
                             </tr>
                         @empty
                             <tr><td colspan="9" class="px-4 py-8 text-center text-gray-400">No jobs found.</td></tr>
