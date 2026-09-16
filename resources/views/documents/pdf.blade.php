@@ -50,7 +50,10 @@
         <strong>Customer:</strong><br>
         {{ $job->customer?->name }}<br>
         @if ($job->customer?->company) {{ $job->customer->company }}<br> @endif
-        @if ($job->customer?->fullAddress()) {{ $job->customer->fullAddress() }}<br> @endif
+        @if ($job->customer?->address_line_1) {{ $job->customer->address_line_1 }}<br> @endif
+        @if ($job->customer?->address_line_2) {{ $job->customer->address_line_2 }}<br> @endif
+        @php $cityLine = trim(trim(($job->customer?->postcode ?? '').' '.($job->customer?->city ?? '')).($job->customer?->state ? ', '.$job->customer->state : ''), ' ,'); @endphp
+        @if ($cityLine) {{ $cityLine }}<br> @endif
         @if ($job->customer?->phone) {{ $job->customer->phone }} @endif
     </div>
 

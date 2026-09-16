@@ -51,7 +51,10 @@
         <strong>Customer:</strong><br>
         {{ $customer?->name }}<br>
         @if ($customer?->company) {{ $customer->company }}<br> @endif
-        @if ($customer?->fullAddress()) {{ $customer->fullAddress() }}<br> @endif
+        @if ($customer?->address_line_1) {{ $customer->address_line_1 }}<br> @endif
+        @if ($customer?->address_line_2) {{ $customer->address_line_2 }}<br> @endif
+        @php $cityLine = trim(trim(($customer?->postcode ?? '').' '.($customer?->city ?? '')).($customer?->state ? ', '.$customer->state : ''), ' ,'); @endphp
+        @if ($cityLine) {{ $cityLine }}<br> @endif
         @if ($customer?->phone) {{ $customer->phone }} @endif
     </div>
 

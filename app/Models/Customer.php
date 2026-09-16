@@ -27,17 +27,6 @@ class Customer extends Model
         return $this->belongsTo(User::class, 'created_by');
     }
 
-    /** Full postal address as comma-joined lines, skipping any that are blank. */
-    public function fullAddress(): string
-    {
-        return collect([
-            $this->address_line_1,
-            $this->address_line_2,
-            trim("{$this->postcode} {$this->city}"),
-            $this->state,
-        ])->filter()->implode(', ');
-    }
-
     public function jobs(): HasMany
     {
         return $this->hasMany(Job::class);
