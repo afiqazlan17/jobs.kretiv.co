@@ -19,6 +19,7 @@
         .signatures { margin-top: 60px; display: flex; justify-content: space-between; }
         .signatures .block { width: 45%; }
         .signature-line { margin-top: 40px; border-top: 1px solid #000000; width: 200px; }
+        .header-divider { border: none; border-top: 1px solid #cccccc; margin: 16px 0 24px; }
     </style>
 </head>
 <body>
@@ -38,11 +39,13 @@
         @endphp
         <div style="text-align: right">
             <div class="title">{{ $type === 'proforma' ? 'PROFORMA INVOICE' : strtoupper($type) }}</div>
-            <div>{{ $noLabel }} {{ $docNumber }}</div>
-            <div class="muted">{{ now()->format('d M Y') }}</div>
-            <div class="muted">By: {{ $generatedBy }}</div>
+            <div><strong>{{ $noLabel }}:</strong> {{ $docNumber }}</div>
+            <div><strong>Date:</strong> {{ now()->format('d/m/y') }}</div>
+            <div><strong>By:</strong> {{ $generatedBy }}</div>
         </div>
     </div>
+
+    <hr class="header-divider">
 
     <div>
         <strong>Customer:</strong><br>
@@ -83,9 +86,9 @@
 
     <table class="totals">
         @if ($showBreakdown)
-            <tr><td>Subtotal:</td><td class="text-right">RM {{ number_format($subtotal, 2) }}</td></tr>
-            <tr><td>Delivery:</td><td class="text-right">RM {{ number_format($delivery, 2) }}</td></tr>
-            <tr><td>Discount:</td><td class="text-right">(RM {{ number_format($discount, 2) }})</td></tr>
+            <tr><td><strong>Subtotal:</strong></td><td class="text-right">RM {{ number_format($subtotal, 2) }}</td></tr>
+            <tr><td><strong>Delivery:</strong></td><td class="text-right">RM {{ number_format($delivery, 2) }}</td></tr>
+            <tr><td><strong>Discount:</strong></td><td class="text-right">(RM {{ number_format($discount, 2) }})</td></tr>
         @endif
         <tr><td><strong>Total (MYR):</strong></td><td class="text-right"><strong>RM {{ number_format($grandTotal, 2) }}</strong></td></tr>
     </table>
