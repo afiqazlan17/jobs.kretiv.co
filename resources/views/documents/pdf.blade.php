@@ -3,10 +3,11 @@
 <head>
     <meta charset="utf-8">
     <style>
-        body { font-family: Helvetica, Arial, sans-serif; font-size: 11px; color: #000000; }
+        body { font-family: DejaVu Sans, sans-serif; font-size: 11px; color: #000000; }
+        strong, b { font-weight: bold; }
         .header { width: 100%; border-collapse: collapse; margin-bottom: 24px; }
         .header td { border: none; padding: 0; vertical-align: top; }
-        .brand { font-size: 16px; }
+        .brand { font-size: 16px; font-weight: bold; }
         .muted { color: #666666; }
         .title { font-size: 20px; font-weight: bold; letter-spacing: 1px; margin-bottom: 4px; }
         table { width: 100%; border-collapse: collapse; margin-top: 16px; }
@@ -40,9 +41,9 @@
             </td>
             <td style="text-align: right;">
                 <div class="title">{{ $type === 'proforma' ? 'PROFORMA INVOICE' : strtoupper($type) }}</div>
-                <div>{{ $noLabel }}: {{ $docNumber }}</div>
-                <div>Date: {{ now()->format('d/m/y') }}</div>
-                <div>By: {{ $generatedBy }}</div>
+                <div><strong>{{ $noLabel }}:</strong> {{ $docNumber }}</div>
+                <div><strong>Date:</strong> {{ now()->format('d/m/y') }}</div>
+                <div><strong>By:</strong> {{ $generatedBy }}</div>
             </td>
         </tr>
     </table>
@@ -50,7 +51,7 @@
     <hr class="header-divider">
 
     <div>
-        Customer:<br>
+        <strong>Customer:</strong><br>
         {{ $job->customer?->name }}<br>
         @if ($job->customer?->company) {{ $job->customer->company }}<br> @endif
         @if ($job->customer?->address_line_1) {{ $job->customer->address_line_1 }}<br> @endif
@@ -60,7 +61,7 @@
         @if ($job->customer?->phone) {{ $job->customer->phone }} @endif
     </div>
 
-    <div style="margin-top: 12px">Title: {{ $job->job_type }}</div>
+    <div style="margin-top: 12px"><strong>Title:</strong> {{ $job->job_type }}</div>
 
     @php
         $lineItems = $job->line_items ?? [];
@@ -113,11 +114,11 @@
 
     <table class="totals">
         @if ($showBreakdown)
-            <tr><td>Subtotal:</td><td class="text-right">RM {{ number_format($subtotal, 2) }}</td></tr>
-            <tr><td>Delivery:</td><td class="text-right">RM {{ number_format($delivery, 2) }}</td></tr>
-            <tr><td>Discount:</td><td class="text-right">(RM {{ number_format($discount, 2) }})</td></tr>
+            <tr><td><strong>Subtotal:</strong></td><td class="text-right">RM {{ number_format($subtotal, 2) }}</td></tr>
+            <tr><td><strong>Delivery:</strong></td><td class="text-right">RM {{ number_format($delivery, 2) }}</td></tr>
+            <tr><td><strong>Discount:</strong></td><td class="text-right">(RM {{ number_format($discount, 2) }})</td></tr>
         @endif
-        <tr><td>Total (MYR):</td><td class="text-right">RM {{ number_format($total, 2) }}</td></tr>
+        <tr><td><strong>Total (MYR):</strong></td><td class="text-right">RM {{ number_format($total, 2) }}</td></tr>
     </table>
 
     <div style="clear: both"></div>
@@ -153,11 +154,11 @@
     <table class="signatures">
         <tr>
             <td>
-                Issued by:
+                <strong>Issued by:</strong>
                 <div class="signature-line"></div>
             </td>
             <td>
-                Accepted by:
+                <strong>Accepted by:</strong>
                 <div class="signature-line"></div>
             </td>
         </tr>
