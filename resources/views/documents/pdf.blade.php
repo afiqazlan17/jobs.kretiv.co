@@ -4,7 +4,8 @@
     <meta charset="utf-8">
     <style>
         body { font-family: Helvetica, Arial, sans-serif; font-size: 11px; color: #000000; }
-        .header { display: flex; justify-content: space-between; margin-bottom: 24px; }
+        .header { width: 100%; border-collapse: collapse; margin-bottom: 24px; }
+        .header td { border: none; padding: 0; vertical-align: top; }
         .brand { font-size: 16px; }
         .muted { color: #666666; }
         .title { font-size: 20px; font-weight: bold; letter-spacing: 1px; margin-bottom: 4px; }
@@ -23,26 +24,28 @@
     </style>
 </head>
 <body>
-    <div class="header">
-        <div style="display: flex; align-items: center;">
-            <img src="{{ public_path('images/kretivco-logo.png') }}" style="width: 60px; height: 60px; margin-right: 12px;">
-            <div>
+    @php
+        $noLabel = ['quotation' => 'QNo#', 'proforma' => 'Invoice No#', 'invoice' => 'Invoice No#', 'receipt' => 'Receipt No#'][$type] ?? 'No#';
+    @endphp
+    <table class="header">
+        <tr>
+            <td style="width: 70px;">
+                <img src="{{ public_path('images/kretivco-logo.png') }}" style="width: 60px; height: 60px;">
+            </td>
+            <td>
                 <div class="brand">{{ config('kretivco.brand.name') }}</div>
                 <div class="muted">{{ config('kretivco.brand.ssm') }}</div>
                 <div class="muted">{{ config('kretivco.brand.address_line_1') }}</div>
                 <div class="muted">{{ config('kretivco.brand.address_line_2') }}</div>
-            </div>
-        </div>
-        @php
-            $noLabel = ['quotation' => 'QNo#', 'proforma' => 'Invoice No#', 'invoice' => 'Invoice No#', 'receipt' => 'Receipt No#'][$type] ?? 'No#';
-        @endphp
-        <div style="text-align: right">
-            <div class="title">{{ $type === 'proforma' ? 'PROFORMA INVOICE' : strtoupper($type) }}</div>
-            <div>{{ $noLabel }}: {{ $docNumber }}</div>
-            <div>Date: {{ now()->format('d/m/y') }}</div>
-            <div>By: {{ $generatedBy }}</div>
-        </div>
-    </div>
+            </td>
+            <td style="text-align: right;">
+                <div class="title">{{ $type === 'proforma' ? 'PROFORMA INVOICE' : strtoupper($type) }}</div>
+                <div>{{ $noLabel }}: {{ $docNumber }}</div>
+                <div>Date: {{ now()->format('d/m/y') }}</div>
+                <div>By: {{ $generatedBy }}</div>
+            </td>
+        </tr>
+    </table>
 
     <hr class="header-divider">
 
