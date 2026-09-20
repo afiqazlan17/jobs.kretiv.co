@@ -45,6 +45,21 @@ class JobCreationTest extends TestCase
         $this->assertSame(Job::STATUS_POTENTIAL, $job->status);
     }
 
+    public function test_creation_summary_is_the_first_log_entry_and_the_details_card_is_gone(): void
+    {
+        $bod = User::factory()->create(['role' => User::ROLE_BOD]);
+        $this->actingAs($bod)->post(route('jobs.store'), $this->payload(['print']));
+        $job = Job::first();
+
+        $note = $job->activityLog()->where('action', 'created')->value('note');
+        $this->assertStringContainsString('Department: KretivPrint', $note);
+        $this->assertStringContainsString('Job Type: Client Project', $note);
+
+        $this->actingAs($bod)->get(route('jobs.show', $job))
+            ->assertOk()->assertSee('Department: KretivPrint')
+            ->assertDontSee('Estimation Value')->assertDontSee('Save Line Items')->assertDontSee('Add Vendor Cost');
+    }
+
     public function test_a_multi_department_submission_creates_one_job_per_department_sharing_a_project_id(): void
     {
         $bod = User::factory()->create(['role' => User::ROLE_BOD]);

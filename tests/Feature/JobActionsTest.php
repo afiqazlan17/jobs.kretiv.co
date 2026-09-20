@@ -28,11 +28,11 @@ class JobActionsTest extends TestCase
         $bod = User::factory()->create(['role' => User::ROLE_BOD]);
         $job = $this->job();
 
-        $response = $this->actingAs($bod)->post(route('jobs.take-in', $job), ['pic' => 'Afiq']);
+        $response = $this->actingAs($bod)->post(route('jobs.take-in', $job));
 
         $response->assertRedirect();
         $job->refresh();
-        $this->assertSame('Afiq', $job->pic);
+        $this->assertSame($bod->name, $job->pic);
         $this->assertSame(Job::STATUS_IN_PROGRESS, $job->status);
     }
 

@@ -269,7 +269,7 @@ class JobController extends Controller
                 'user_id' => $request->user()->id,
                 'user_name' => $request->user()->name,
                 'action' => 'created',
-                'note' => 'Job created.',
+                'note' => $this->creationSummary($job),
             ]);
 
             return $job;
@@ -427,9 +427,9 @@ class JobController extends Controller
     {
         $this->authorize('update', $job);
 
-        $validated = $request->validate(['pic' => ['required', 'string', 'max:255']]);
+        $pic = $request->user()->name;
 
-        $job->update(['pic' => $validated['pic'], 'status' => Job::STATUS_IN_PROGRESS]);
+        $job->update(['pic' => $pic, 'status' => Job::STATUS_IN_PROGRESS]);
 
         ActivityLog::create([
             'job_id' => $job->id,
@@ -440,7 +440,7 @@ class JobController extends Controller
             'field_changed' => 'status',
             'old_value' => Job::STATUS_POTENTIAL,
             'new_value' => Job::STATUS_IN_PROGRESS,
-            'note' => "Taken in by {$validated['pic']}.",
+            'note' => "Taken in by {$pic}.",
         ]);
 
         return back()->with('success', "{$job->job_id} taken in.");
@@ -692,5 +692,25 @@ class JobController extends Controller
         }
 
         return array_intersect_key($all, array_flip($user->visibleDepartments()));
+    }
+
+    /** Snapshot shown as the first activity-log entry (replaces the old details card on the job page). */
+    private function creationSummary(Job $job): string
+    {
+        $lines = [
+            'Customer: '.($job->customer?->company ?: $job->customer?->name),
+            'Department: '.config("kretivco.departments.{$job->department}.label", $job->department),
+            'Job Type: '.(config("kretivco.job_types.{$job->job_type_category}.label", (string) $job->job_type_category)),
+            'Bank: '.config("kretivco.banks.{$job->bank}.label", '—'),
+            'PIC: '.($job->pic ?: '—'),
+            'Est. Value: RM '.number_format((float) $job->estimation_value, 2),
+            'Start: '.($job->start_date?->format('j F Y') ?? '—'),
+            'Deadline: '.($job->deadline?->format('j F Y') ?? '—'),
+        ];
+        if ($job->notes) {
+            $lines[] = 'Notes: '.$job->notes;
+        }
+
+        return implode("\n", $lines);
     }
 }

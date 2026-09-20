@@ -157,7 +157,7 @@
                 <h3 class="text-sm font-semibold text-gray-700 mb-3">Take In Job</h3>
                 <form method="POST" action="{{ route('jobs.take-in', $job) }}" class="flex flex-wrap items-end gap-2">
                     @csrf
-                    <input type="text" name="pic" placeholder="Your name" required class="rounded-md border-gray-300 shadow-sm text-sm">
+                    <p class="text-sm text-gray-600 self-center">This job will be assigned to <strong>{{ auth()->user()->name }}</strong>.</p>
                     <x-primary-button type="submit">Take In Job</x-primary-button>
                     <button type="button" @click="$store.jobActions.panel = null" class="text-xs text-gray-500 hover:underline">Cancel</button>
                 </form>
@@ -233,18 +233,6 @@
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
             {{-- Left column --}}
             <div class="space-y-4">
-                <div class="bg-white shadow-sm sm:rounded-lg p-6 grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
-                    <div><span class="text-gray-400">PIC</span><br>{{ $job->pic ?? '— queue —' }}</div>
-                    <div><span class="text-gray-400">Bank</span><br>{{ config('kretivco.banks.'.$job->bank.'.label', '—') }}</div>
-                    <div><span class="text-gray-400">Start Date</span><br>{{ $job->start_date?->format('d M Y') ?? '—' }}</div>
-                    <div><span class="text-gray-400">Deadline</span><br>{{ $job->deadline?->format('d M Y') ?? '—' }}</div>
-                    <div><span class="text-gray-400">Estimation Value</span><br>RM {{ number_format($job->estimation_value ?? 0, 2) }}</div>
-                    <div><span class="text-gray-400">Final Value</span><br>{{ $job->final_value !== null ? 'RM '.number_format($job->final_value, 2) : '—' }}</div>
-                    @if ($job->notes)
-                        <div class="sm:col-span-2"><span class="text-gray-400">Notes</span><br>{{ $job->notes }}</div>
-                    @endif
-                </div>
-
                 @can('update', $job)
                 <div class="bg-white shadow-sm sm:rounded-lg p-6">
                     <h3 class="text-sm font-semibold text-gray-500 uppercase mb-3">New Note</h3>
@@ -277,7 +265,9 @@
                                     <strong>{{ $log->user_name ?? 'System' }}</strong>
                                     {{ $log->detail ?? $label }}
                                 </div>
-                                @if ($log->action === 'note' && $log->note)
+                                @if ($log->action === 'created' && $log->note)
+                                    <div class="mt-1 text-gray-600 bg-gray-50 border border-gray-100 rounded-md px-3 py-2 whitespace-pre-line">{{ $log->note }}</div>
+                                @elseif ($log->action === 'note' && $log->note)
                                     <div class="mt-1 text-gray-600 bg-gray-50 rounded-md px-3 py-2 prose-sm max-w-none">{!! $log->note !!}</div>
                                 @elseif ($log->note)
                                     <div class="mt-1 text-gray-500 italic">{{ $log->note }}</div>
@@ -383,6 +373,8 @@
                     @include('jobs.partials.document-modal')
                 @endcan
 
+                {{-- Vendor Cost and the Line Items form are hidden for now (documents edit items in the preview modal). --}}
+                @if (false)
                 <div class="bg-white shadow-sm sm:rounded-lg p-6" x-data="{ showVendorForm: false, payingId: null }">
                     @php
                         $vendorCosts = collect($job->vendor_costs ?? []);
@@ -525,6 +517,7 @@
                     </form>
                 </div>
                 @endcan
+                @endif
 
                 @php
                     $allAtt = collect($job->attachments ?? []);

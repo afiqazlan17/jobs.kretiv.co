@@ -17,7 +17,7 @@
 
         <div class="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-[minmax(0,380px)_minmax(0,1fr)]">
             {{-- Form --}}
-            <div class="overflow-y-auto p-5 space-y-3 border-r border-gray-100 text-sm">
+            <div class="overflow-y-auto p-5 space-y-3 border-r border-gray-100 text-sm" @input="schedule()" @change="schedule()" @keyup="schedule()">
                 <p x-show="loading" class="text-gray-400 text-xs">Loading…</p>
                 <template x-if="!loading">
                     <div class="space-y-3">
@@ -183,7 +183,7 @@
             schedule() {
                 if (!this.open || this.loading) return;
                 clearTimeout(this.timer);
-                this.timer = setTimeout(() => this.refreshPreview(), 700);
+                this.timer = setTimeout(() => this.refreshPreview(), 400);
             },
             async refreshPreview() {
                 const mine = ++this.seq; this.previewing = true; this.error = '';
