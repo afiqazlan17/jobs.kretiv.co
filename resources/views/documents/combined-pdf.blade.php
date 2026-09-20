@@ -43,7 +43,9 @@
         @if ($showBreakdown)
             <tr><td>Subtotal</td><td class="v">RM {{ number_format($subtotal, 2) }}</td></tr>
             <tr><td>Delivery</td><td class="v">RM {{ number_format($delivery, 2) }}</td></tr>
-            <tr><td>Discount</td><td class="v">(RM {{ number_format($discount, 2) }})</td></tr>
+            @if ($discount > 0)
+                <tr><td>Discount</td><td class="v">(RM {{ number_format($discount, 2) }})</td></tr>
+            @endif
         @endif
         <tr class="grand"><td>Total (MYR)</td><td class="v">RM {{ number_format($total, 2) }}</td></tr>
     </table>

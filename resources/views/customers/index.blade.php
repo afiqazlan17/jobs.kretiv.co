@@ -111,7 +111,7 @@
                             <tr class="text-left text-xs text-gray-500 uppercase">
                                 <th class="px-4 py-3"></th>
                                 <th class="px-4 py-3 whitespace-nowrap">ID</th>
-                                <th class="px-4 py-3 whitespace-nowrap">Name</th>
+                                <th class="px-4 py-3 whitespace-nowrap">PIC Name</th>
                                 <th class="px-4 py-3 whitespace-nowrap">Company</th>
                                 <th class="px-4 py-3 whitespace-nowrap">Jobs</th>
                                 <th class="px-4 py-3 whitespace-nowrap">Value</th>

@@ -134,10 +134,11 @@ class DocumentData
         $items = collect($job->line_items ?? [])->map(function ($li) {
             $item = trim((string) ($li['item'] ?? ''));
             $desc = trim((string) ($li['desc'] ?? ''));
+            $size = trim((string) ($li['size'] ?? ''));
 
             return [
                 'item' => $item !== '' ? $item : $desc,
-                'desc' => $item === $desc ? '' : $desc,
+                'desc' => $item === $desc ? $size : $desc,
                 'qty' => (float) ($li['qty'] ?? 1),
                 'price' => (float) ($li['price'] ?? 0),
             ];

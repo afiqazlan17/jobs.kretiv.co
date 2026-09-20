@@ -11,7 +11,7 @@
                     </button>
                     <div x-show="open" x-cloak x-transition @click="open = false" class="absolute right-0 mt-2 w-64 bg-white rounded-md shadow-lg py-1 z-20 text-sm text-gray-700">
                         @if ($job->status === 'potential' && ! $job->pic)
-                            <button type="button" @click="$store.jobActions.panel = 'takein'" class="w-full text-left px-4 py-2 hover:bg-gray-50">🙋 Take In Job</button>
+                            <button type="submit" form="takein-form" class="w-full text-left px-4 py-2 hover:bg-gray-50">🙋 Take In Job</button>
                         @endif
                         <button type="button" @click="$store.jobActions.panel = 'reassign'" class="w-full text-left px-4 py-2 hover:bg-gray-50">🔁 Change Current Responsible</button>
                         @if (! $job->hold_status)
@@ -121,7 +121,7 @@
                                 <div class="absolute top-4 h-0.5 {{ $i <= $currentIdx ? 'bg-green-400' : 'bg-gray-200' }}" style="right: 50%; width: 100%;"></div>
                             @endif
                             @if ($clickableForward)
-                                <button type="button" @click="$store.jobActions.panel = '{{ $key === 'in_progress' ? 'takein' : 'complete' }}'"
+                                <button type="{{ $key === 'in_progress' ? 'submit' : 'button' }}" @if ($key === 'in_progress') form="takein-form" @else @click="$store.jobActions.panel = 'complete'" @endif
                                         class="relative z-10 w-8 h-8 rounded-full border-2 border-blue-400 bg-white text-blue-600 text-xs font-bold flex items-center justify-center hover:bg-blue-50" title="Advance to {{ $stages[$key] }}">{{ $i + 1 }}</button>
                             @elseif ($clickableBack)
                                 <button type="button" @click="$store.jobActions.panel = 'rollback'"
@@ -152,16 +152,8 @@
 
         {{-- Action panels — toggled by the header's Action dropdown or the stepper --}}
         @can('update', $job)
+        <form id="takein-form" method="POST" action="{{ route('jobs.take-in', $job) }}" class="hidden">@csrf</form>
         <div x-show="$store.jobActions.panel" x-cloak class="bg-white shadow-sm sm:rounded-lg p-6 border-2 border-pink-100">
-            <div x-show="$store.jobActions.panel === 'takein'">
-                <h3 class="text-sm font-semibold text-gray-700 mb-3">Take In Job</h3>
-                <form method="POST" action="{{ route('jobs.take-in', $job) }}" class="flex flex-wrap items-end gap-2">
-                    @csrf
-                    <p class="text-sm text-gray-600 self-center">This job will be assigned to <strong>{{ auth()->user()->name }}</strong>.</p>
-                    <x-primary-button type="submit">Take In Job</x-primary-button>
-                    <button type="button" @click="$store.jobActions.panel = null" class="text-xs text-gray-500 hover:underline">Cancel</button>
-                </form>
-            </div>
             <div x-show="$store.jobActions.panel === 'reassign'">
                 <h3 class="text-sm font-semibold text-gray-700 mb-3">Change Current Responsible</h3>
                 <form method="POST" action="{{ route('jobs.reassign', $job) }}" class="flex flex-wrap items-end gap-2">
@@ -251,9 +243,12 @@
                 </div>
                 @endcan
 
-                <div class="bg-white shadow-sm sm:rounded-lg p-6">
-                    <h3 class="text-sm font-semibold text-gray-500 uppercase mb-4">Activity Log</h3>
-                    <div class="space-y-3 text-sm">
+                <div class="bg-white shadow-sm sm:rounded-lg p-6" x-data="{ oldestFirst: false }">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-sm font-semibold text-gray-500 uppercase">Activity Log</h3>
+                        <button type="button" @click="oldestFirst = !oldestFirst" class="text-xs font-semibold px-3 py-1.5 rounded-md border border-gray-200 text-gray-600 hover:bg-gray-50" x-text="oldestFirst ? '↓ Newest first' : '↑ Oldest first'"></button>
+                    </div>
+                    <div class="space-y-3 text-sm flex" :class="oldestFirst ? 'flex-col-reverse' : 'flex-col'">
                         @forelse ($job->activityLog as $log)
                             @php
                                 $icon = ['created' => '📝', 'status_change' => '🔄', 'rollback' => '⏪', 'cancelled' => '✕', 'edited' => '✏️', 'completed' => '✅', 'note' => '💬', 'document_generated' => '🧾'][$log->action] ?? '•';

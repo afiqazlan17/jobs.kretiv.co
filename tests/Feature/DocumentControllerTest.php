@@ -306,4 +306,30 @@ class DocumentControllerTest extends TestCase
         $response->assertStatus(422);
         $this->assertSame(0, JobDocument::count());
     }
+
+    public function test_discount_row_only_appears_when_there_is_a_discount(): void
+    {
+        if (! shell_exec('command -v pdftotext')) {
+            $this->markTestSkipped('pdftotext not installed.');
+        }
+        $bod = User::factory()->create(['role' => User::ROLE_BOD]);
+        $job = $this->job();
+        $payload = ['title' => 'Banner', 'items' => [['item' => 'Banner', 'desc' => '', 'qty' => 1, 'price' => 100]], 'delivery' => 0];
+
+        $none = $this->actingAs($bod)->post(route('jobs.documents.preview', [$job, 'quotation']), $payload + ['discount' => 0]);
+        $some = $this->actingAs($bod)->post(route('jobs.documents.preview', [$job, 'quotation']), $payload + ['discount' => 10]);
+
+        $this->assertStringNotContainsString('Discount', $this->pdfText($none->getContent()));
+        $this->assertStringContainsString('Discount', $this->pdfText($some->getContent()));
+    }
+
+    private function pdfText(string $pdf): string
+    {
+        $file = tempnam(sys_get_temp_dir(), 'pdf');
+        file_put_contents($file, $pdf);
+        $text = (string) shell_exec('pdftotext '.escapeshellarg($file).' - 2>/dev/null');
+        unlink($file);
+
+        return $text;
+    }
 }

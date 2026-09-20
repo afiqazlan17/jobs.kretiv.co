@@ -9,7 +9,7 @@
      @keydown.escape.window="open && close()"
      x-show="open" x-cloak
      class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-2 sm:p-6">
-    <div class="bg-white rounded-xl shadow-2xl w-full max-w-6xl h-[92vh] flex flex-col overflow-hidden" @click.outside="close()">
+    <div class="bg-white rounded-xl shadow-2xl w-full max-w-6xl h-[92vh] flex flex-col overflow-hidden">
         <div class="flex items-center justify-between px-5 py-3 border-b border-gray-100">
             <h2 class="text-base font-bold text-gray-900" x-text="`Preview ${label} — ${jobCode}`"></h2>
             <button type="button" @click="close()" class="text-gray-400 hover:text-gray-700 text-xl leading-none">×</button>
@@ -96,7 +96,11 @@
 
             {{-- Live preview (real PDF) --}}
             <div class="relative bg-gray-100 min-h-[300px]">
-                <iframe x-ref="frame" class="absolute inset-0 w-full h-full border-0" :src="previewUrl" x-show="previewUrl"></iframe>
+                {{-- Two stacked frames: the new render loads behind the visible one and swaps in on load, so typing never flashes blank. --}}
+                <template x-for="i in [0, 1]" :key="i">
+                    <iframe class="absolute inset-0 w-full h-full border-0 bg-white" :class="active === i ? 'z-10' : 'z-0'" x-show="previewUrl"
+                            :src="frameSrc[i] || 'about:blank'" @load="frameLoaded(i)"></iframe>
+                </template>
                 <div x-show="previewing" class="absolute top-3 right-4 text-xs text-gray-500 bg-white/90 rounded px-2 py-1 shadow">Updating preview…</div>
             </div>
         </div>
@@ -122,7 +126,7 @@
             jobCode: cfg.jobCode, urls: cfg.urls,
             open: false, type: 'quotation', label: 'Quotation', loading: false, busy: false, previewing: false,
             error: '', notice: '', form: blank(), paymentMethods: [], invoiceNumber: null, invoiceTotal: null, customerPhone: '', docNumber: '',
-            editNotes: false, notesText: '', defaultNotes: [], previewUrl: null, timer: null, seq: 0, pageDirty: false,
+            editNotes: false, notesText: '', defaultNotes: [], previewUrl: null, frameSrc: ['', ''], active: 0, pending: null, dirty: false, timer: null, seq: 0, pageDirty: false,
 
             url(action) { return this.urls[action].replace('__TYPE__', this.type); },
             token() { return document.querySelector('meta[name="csrf-token"]').content; },
@@ -143,7 +147,7 @@
             },
             async openFor(type) {
                 this.type = type; this.open = true; this.loading = true; this.error = ''; this.notice = ''; this.editNotes = false;
-                this.previewUrl = null; this.form = blank();
+                this.resetFrames(); this.form = blank(); this.dirty = false;
                 const res = await this.call('draft', 'GET');
                 if (!res.ok) { this.error = await this.failure(res); this.loading = false; return; }
                 const d = await res.json();
@@ -153,13 +157,25 @@
                 const f = d.defaults; delete f.notes;
                 this.loading = false;
                 this.form = f;
+                this.$nextTick(() => { this.dirty = false; });
                 this.refreshPreview();
+            },
+            resetFrames() {
+                this.frameSrc.forEach((u) => u && URL.revokeObjectURL(u.split('#')[0]));
+                this.frameSrc = ['', '']; this.active = 0; this.pending = null; this.previewUrl = null;
+            },
+            frameLoaded(i) {
+                if (this.pending !== i) return;
+                const old = this.frameSrc[this.active];
+                this.active = i; this.pending = null;
+                if (old && old !== this.frameSrc[i]) URL.revokeObjectURL(old.split('#')[0]);
+                this.frameSrc[1 - i] = '';
             },
             close() {
                 if (!this.open) return;
+                if (this.dirty && !confirm('Discard your unsaved changes?')) return;
                 this.open = false;
-                if (this.previewUrl) URL.revokeObjectURL(this.previewUrl);
-                this.previewUrl = null;
+                this.resetFrames();
                 if (this.pageDirty) window.location.reload();
             },
             addItem() { this.form.items.push({ item: '', desc: '', qty: 1, price: 0 }); },
@@ -182,6 +198,7 @@
             },
             schedule() {
                 if (!this.open || this.loading) return;
+                this.dirty = true;
                 clearTimeout(this.timer);
                 this.timer = setTimeout(() => this.refreshPreview(), 400);
             },
@@ -192,15 +209,17 @@
                 this.previewing = false;
                 if (!res.ok) { this.error = await this.failure(res); return; }
                 const url = URL.createObjectURL(await res.blob());
-                if (this.previewUrl) URL.revokeObjectURL(this.previewUrl);
-                this.previewUrl = url + '#toolbar=0&navpanes=0&view=FitH';
+                const src = url + '#toolbar=0&navpanes=0&view=FitH';
+                const t = this.pending ?? (1 - this.active);
+                if (this.frameSrc[t]) URL.revokeObjectURL(this.frameSrc[t].split('#')[0]);
+                this.pending = t; this.frameSrc[t] = src; this.previewUrl = src;
             },
             async save() {
                 this.busy = true; this.error = ''; this.notice = '';
                 const res = await this.call('save', 'POST', this.payload());
                 this.busy = false;
                 if (!res.ok) { this.error = await this.failure(res); return; }
-                this.notice = (await res.json()).message; this.pageDirty = true;
+                this.notice = (await res.json()).message; this.pageDirty = true; this.dirty = false;
             },
             async download() {
                 this.busy = true; this.error = ''; this.notice = '';
@@ -209,7 +228,7 @@
                 const name = (res.headers.get('Content-Disposition') || '').match(/filename="?([^";]+)"?/)?.[1] || 'document.pdf';
                 const a = document.createElement('a');
                 a.href = URL.createObjectURL(await res.blob()); a.download = name; document.body.appendChild(a); a.click(); a.remove();
-                this.busy = false; this.pageDirty = true; this.close();
+                this.busy = false; this.pageDirty = true; this.dirty = false; this.close();
             },
             print() {
                 if (!this.previewUrl) return;
