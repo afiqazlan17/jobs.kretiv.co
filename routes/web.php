@@ -3,8 +3,10 @@
 use App\Http\Controllers\AttachmentController;
 use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\DepartmentController;
 use App\Http\Controllers\DocumentController;
 use App\Http\Controllers\FinanceController;
+use App\Http\Controllers\FinanceReportController;
 use App\Http\Controllers\JobController;
 use App\Http\Controllers\JobVendorCostController;
 use App\Http\Controllers\LeadController;
@@ -81,12 +83,15 @@ Route::middleware('auth')->group(function () {
     Route::post('/leads/{lead}/mark-lost', [LeadController::class, 'markLost'])->name('leads.mark-lost');
 
     Route::get('/finance', [FinanceController::class, 'index'])->name('finance.index');
+    Route::get('/finance/reports/{report}', [FinanceReportController::class, 'show'])->name('finance.reports');
     Route::post('/finance/expense', [FinanceController::class, 'storeExpense'])->name('finance.expense.store');
     Route::post('/finance/opening-balance', [FinanceController::class, 'storeOpeningBalance'])->name('finance.opening-balance.store');
     Route::post('/finance/director-loan', [FinanceController::class, 'storeDirectorLoan'])->name('finance.director-loan.store');
     Route::post('/finance/bank-transfer', [FinanceController::class, 'storeBankTransfer'])->name('finance.bank-transfer.store');
 
     Route::get('/reports', [ReportController::class, 'index'])->name('reports.index');
+    Route::get('/reports/export', [ReportController::class, 'export'])->name('reports.export');
+    Route::get('/departments', [DepartmentController::class, 'index'])->name('departments.index');
 });
 
 require __DIR__.'/auth.php';

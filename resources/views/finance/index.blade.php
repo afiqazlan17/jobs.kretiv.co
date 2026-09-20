@@ -1,6 +1,22 @@
 <x-app-layout>
     <x-slot name="header">
-        <h2 class="font-semibold text-xl text-white leading-tight">Finance</h2>
+        <div class="flex items-center justify-between flex-wrap gap-3" x-data="{ more: false }">
+            <div>
+                <h2 class="font-semibold text-xl text-white leading-tight">Finance</h2>
+                <p class="text-xs text-white/60 mt-0.5">Revenue, expense &amp; ledger</p>
+            </div>
+            <div class="flex items-center gap-2">
+                <div class="relative" @click.outside="more = false">
+                    <button type="button" @click="more = !more" class="px-4 py-2 bg-white/15 hover:bg-white/25 text-white text-xs font-semibold rounded-md">More &#9662;</button>
+                    <div x-show="more" x-cloak class="absolute right-0 mt-2 w-52 bg-white rounded-md shadow-lg py-1 z-20 text-sm text-gray-700" @click="more = false">
+                        <button type="button" @click="$dispatch('finance-tab', 'opening')" class="w-full text-left px-4 py-2 hover:bg-gray-50">Adjust Bank Balance</button>
+                        <button type="button" @click="$dispatch('finance-tab', 'loan')" class="w-full text-left px-4 py-2 hover:bg-gray-50">+ Director Loan</button>
+                        <button type="button" @click="$dispatch('finance-tab', 'transfer')" class="w-full text-left px-4 py-2 hover:bg-gray-50">+ Transfer Bank</button>
+                    </div>
+                </div>
+                <button type="button" @click="$dispatch('finance-tab', 'expense')" class="px-4 py-2 bg-white text-pink-600 text-xs font-semibold rounded-md hover:bg-pink-50">+ Add Expense</button>
+            </div>
+        </div>
     </x-slot>
 
     <div class="py-8">
@@ -17,46 +33,84 @@
                 </div>
             @endif
 
-            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                @foreach ($bankBalances as $key => $balance)
-                    <div class="bg-white shadow-sm sm:rounded-lg p-5 border-l-4" style="border-color: {{ config("kretivco.banks.$key.color") }}">
-                        <div class="text-xs text-gray-400 uppercase">{{ config("kretivco.banks.$key.label") }}</div>
-                        <div class="text-2xl font-bold text-gray-800 mt-1">RM {{ number_format($balance, 2) }}</div>
+            <div class="bg-white shadow-sm sm:rounded-lg p-6">
+                <div class="flex flex-wrap items-end justify-between gap-3 mb-4">
+                    <div>
+                        <h3 class="text-base font-bold text-gray-900">P&amp;L Statement (Profit &amp; Loss)</h3>
+                        <p class="text-xs text-gray-400">Revenue, cost &amp; expense for the selected period</p>
                     </div>
-                @endforeach
-                <div class="bg-white shadow-sm sm:rounded-lg p-5 border-l-4 border-indigo-500">
-                    <div class="text-xs text-gray-400 uppercase">Accounts Receivable</div>
-                    <div class="text-2xl font-bold text-gray-800 mt-1">RM {{ number_format($arOutstanding, 2) }}</div>
+                    <form method="GET" class="flex items-center gap-2 text-sm">
+                        <input type="hidden" name="department" value="{{ $department }}"><input type="hidden" name="bank" value="{{ $bank }}">
+                        <input type="date" name="from" value="{{ $from->toDateString() }}" onchange="this.form.submit()" class="rounded-md border-gray-300 shadow-sm text-sm">
+                        <span class="text-gray-400">to</span>
+                        <input type="date" name="to" value="{{ $to->toDateString() }}" onchange="this.form.submit()" class="rounded-md border-gray-300 shadow-sm text-sm">
+                    </form>
+                </div>
+                @php
+                    $cards = [
+                        ['Revenue', $pl['revenue'], '#E85D04'], ['Cost of Services', $pl['cost'], '#E85D04'], ['Gross Profit', $pl['gross'], '#6366F1'],
+                        ['Outstanding (Receivable)', $pl['receivable'], '#3A86FF'], ['Operating Expense', $pl['opex'], '#E85D04'], ['Net Profit', $pl['net'], '#10B981'],
+                    ];
+                @endphp
+                <div class="grid grid-cols-2 lg:grid-cols-3 gap-3">
+                    @foreach ($cards as [$label, $value, $color])
+                        <div class="rounded-lg border border-gray-100 border-l-4 p-4" style="border-left-color: {{ $color }}">
+                            <div class="text-[11px] font-semibold text-gray-400 uppercase">{{ $label }}</div>
+                            <div class="text-xl font-bold mt-1 {{ $value < 0 ? 'text-red-600' : 'text-gray-900' }}">RM {{ number_format($value, 2) }}</div>
+                        </div>
+                    @endforeach
+                </div>
+            </div>
+
+            <div class="bg-white shadow-sm sm:rounded-lg p-6">
+                <h3 class="text-base font-bold text-gray-900">Bank Balance <span class="text-xs font-normal text-gray-400">(click to filter Ledger)</span></h3>
+                <p class="text-xs text-gray-400 mb-3">Current balance (all-time) — not limited to the P&amp;L period above</p>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    @foreach ($bankBalances as $key => $balance)
+                        <a href="{{ request()->fullUrlWithQuery(['bank' => $bank === $key ? null : $key]) }}#ledger" class="rounded-lg border p-4 hover:bg-gray-50 {{ $bank === $key ? 'border-pink-400 bg-pink-50/40' : 'border-gray-100' }}">
+                            <div class="text-[11px] font-semibold text-gray-400 uppercase">{{ config("kretivco.banks.$key.label") }}</div>
+                            <div class="text-xl font-bold text-gray-900 mt-1">RM {{ number_format($balance, 2) }}</div>
+                        </a>
+                    @endforeach
                 </div>
             </div>
 
             <div class="bg-white shadow-sm sm:rounded-lg overflow-hidden">
-                <div class="p-4 border-b border-gray-100"><h3 class="text-sm font-semibold text-gray-500 uppercase">Department P&amp;L</h3></div>
-                <div class="overflow-x-auto">
-                    <table class="min-w-full divide-y divide-gray-100 text-sm">
-                        <thead class="bg-gray-50">
-                            <tr class="text-left text-xs text-gray-500 uppercase">
-                                <th class="px-4 py-3">Department</th>
-                                <th class="px-4 py-3 text-right">Revenue</th>
-                                <th class="px-4 py-3 text-right">Cost of Service</th>
-                                <th class="px-4 py-3 text-right">Profit</th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-gray-100">
-                            @foreach ($deptPl as $key => $pl)
-                                <tr>
-                                    <td class="px-4 py-3 font-medium" style="color: {{ config("kretivco.departments.$key.color") }}">{{ config("kretivco.departments.$key.label") }}</td>
-                                    <td class="px-4 py-3 text-right">RM {{ number_format($pl['revenue'], 2) }}</td>
-                                    <td class="px-4 py-3 text-right text-red-600">RM {{ number_format($pl['cogs'], 2) }}</td>
-                                    <td class="px-4 py-3 text-right font-semibold {{ $pl['profit'] >= 0 ? 'text-green-600' : 'text-red-600' }}">RM {{ number_format($pl['profit'], 2) }}</td>
-                                </tr>
-                            @endforeach
-                        </tbody>
-                    </table>
+                <div class="p-4 border-b border-gray-100">
+                    <h3 class="text-base font-bold text-gray-900">Collections &amp; Payments by Bank</h3>
+                    <p class="text-xs text-gray-400">Money that actually moved in/out of each bank during the P&amp;L period above</p>
                 </div>
+                <table class="min-w-full divide-y divide-gray-100 text-sm">
+                    <thead class="bg-gray-50"><tr class="text-left text-xs text-gray-500 uppercase"><th class="px-4 py-3">Bank</th><th class="px-4 py-3 text-right">Collected</th><th class="px-4 py-3 text-right">Paid Out</th><th class="px-4 py-3 text-right">Net</th></tr></thead>
+                    <tbody class="divide-y divide-gray-100">
+                        @foreach ($collections as $key => $row)
+                            <tr><td class="px-4 py-3">{{ config("kretivco.banks.$key.label") }}</td><td class="px-4 py-3 text-right text-green-600">RM {{ number_format($row['collected'], 2) }}</td><td class="px-4 py-3 text-right text-red-600">RM {{ number_format($row['paid'], 2) }}</td><td class="px-4 py-3 text-right font-semibold">RM {{ number_format($row['net'], 2) }}</td></tr>
+                        @endforeach
+                    </tbody>
+                </table>
             </div>
 
-            <div class="bg-white shadow-sm sm:rounded-lg p-6" x-data="{ tab: null }">
+            <div class="bg-white shadow-sm sm:rounded-lg overflow-hidden">
+                <div class="p-4 border-b border-gray-100">
+                    <h3 class="text-base font-bold text-gray-900">Department Breakdown</h3>
+                    <p class="text-xs text-gray-400">For the P&amp;L period above</p>
+                </div>
+                <table class="min-w-full divide-y divide-gray-100 text-sm">
+                    <thead class="bg-gray-50"><tr class="text-left text-xs text-gray-500 uppercase"><th class="px-4 py-3">Department</th><th class="px-4 py-3 text-right">Revenue</th><th class="px-4 py-3 text-right">Cost</th><th class="px-4 py-3 text-right">Gross Profit</th></tr></thead>
+                    <tbody class="divide-y divide-gray-100">
+                        @foreach ($deptBreakdown as $key => $row)
+                            <tr>
+                                <td class="px-4 py-3 font-medium" style="color: {{ config("kretivco.departments.$key.color") }}">{{ \App\Http\Controllers\JobController::DEPT_CODES[$key] ?? strtoupper($key) }} {{ config("kretivco.departments.$key.label") }}</td>
+                                <td class="px-4 py-3 text-right">RM {{ number_format($row['revenue'], 2) }}</td>
+                                <td class="px-4 py-3 text-right text-red-600">RM {{ number_format($row['cost'], 2) }}</td>
+                                <td class="px-4 py-3 text-right font-semibold {{ $row['gross'] >= 0 ? 'text-green-600' : 'text-red-600' }}">RM {{ number_format($row['gross'], 2) }}</td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+
+            <div id="post-entry" class="bg-white shadow-sm sm:rounded-lg p-6" x-data="{ tab: null }" @finance-tab.window="tab = $event.detail; $nextTick(() => $el.scrollIntoView({ behavior: 'smooth', block: 'center' }))">
                 <h3 class="text-sm font-semibold text-gray-500 uppercase mb-4">Post an Entry</h3>
                 <div class="flex flex-wrap gap-2 mb-4">
                     <button type="button" @click="tab = tab === 'expense' ? null : 'expense'" class="text-xs font-semibold px-3 py-2 rounded-md" :class="tab === 'expense' ? 'bg-gray-800 text-white' : 'bg-gray-100 text-gray-600'">Expense</button>
@@ -134,32 +188,47 @@
                 </form>
             </div>
 
-            <div class="bg-white shadow-sm sm:rounded-lg overflow-hidden">
-                <div class="p-4 border-b border-gray-100"><h3 class="text-sm font-semibold text-gray-500 uppercase">Recent Entries</h3></div>
+            <div id="ledger" class="bg-white shadow-sm sm:rounded-lg overflow-hidden">
+                <div class="p-4 border-b border-gray-100 flex flex-wrap items-center justify-between gap-3">
+                    <h3 class="text-base font-bold text-gray-900">Ledger</h3>
+                    <form method="GET" class="flex gap-2">
+                        <input type="hidden" name="from" value="{{ $from->toDateString() }}"><input type="hidden" name="to" value="{{ $to->toDateString() }}">
+                        <select name="department" onchange="this.form.submit()" class="rounded-md border-gray-300 shadow-sm text-sm">
+                            <option value="">All Departments</option>
+                            @foreach ($deptBreakdown as $key => $row)<option value="{{ $key }}" {{ $department === $key ? 'selected' : '' }}>{{ config("kretivco.departments.$key.label") }}</option>@endforeach
+                        </select>
+                        <select name="bank" onchange="this.form.submit()" class="rounded-md border-gray-300 shadow-sm text-sm">
+                            <option value="">All Banks</option>
+                            @foreach (config('kretivco.banks') as $key => $b)<option value="{{ $key }}" {{ $bank === $key ? 'selected' : '' }}>{{ $b['label'] }}</option>@endforeach
+                        </select>
+                    </form>
+                </div>
                 <div class="overflow-x-auto">
                     <table class="min-w-full divide-y divide-gray-100 text-sm">
                         <thead class="bg-gray-50">
                             <tr class="text-left text-xs text-gray-500 uppercase">
-                                <th class="px-4 py-3">Date</th>
-                                <th class="px-4 py-3">Type</th>
-                                <th class="px-4 py-3">Description</th>
-                                <th class="px-4 py-3">Job</th>
-                                <th class="px-4 py-3 text-right">Amount</th>
-                                <th class="px-4 py-3">Status</th>
+                                <th class="px-4 py-3">Date</th><th class="px-4 py-3">Description</th><th class="px-4 py-3">Debit</th><th class="px-4 py-3">Credit</th>
+                                <th class="px-4 py-3">Department</th><th class="px-4 py-3">Bank</th><th class="px-4 py-3">Type</th><th class="px-4 py-3 text-right">Amount</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-gray-100">
-                            @forelse ($entries as $entry)
+                            @forelse ($ledger as $entry)
+                                @php
+                                    $intoBank = str_starts_with($entry->debit_account, 'bank_') && ! str_starts_with($entry->credit_account, 'bank_');
+                                    $outOfBank = str_starts_with($entry->credit_account, 'bank_') && ! str_starts_with($entry->debit_account, 'bank_');
+                                @endphp
                                 <tr class="{{ $entry->reversed ? 'opacity-50' : '' }}">
-                                    <td class="px-4 py-3 whitespace-nowrap">{{ $entry->date->format('d M Y') }}</td>
-                                    <td class="px-4 py-3 whitespace-nowrap">{{ ucfirst(str_replace('_', ' ', $entry->type)) }}</td>
+                                    <td class="px-4 py-3 whitespace-nowrap">{{ $entry->date->format('d F Y') }}</td>
                                     <td class="px-4 py-3">{{ $entry->description }}</td>
-                                    <td class="px-4 py-3 font-mono text-xs">{{ $entry->job_id ?? '—' }}</td>
-                                    <td class="px-4 py-3 text-right">RM {{ number_format($entry->amount, 2) }}</td>
-                                    <td class="px-4 py-3 whitespace-nowrap">{{ $entry->reversed ? 'Reversed' : 'Active' }}</td>
+                                    <td class="px-4 py-3 text-gray-600">{{ \App\Support\ChartOfAccounts::describe($entry->debit_account)['name'] }}</td>
+                                    <td class="px-4 py-3 text-gray-600">{{ \App\Support\ChartOfAccounts::describe($entry->credit_account)['name'] }}</td>
+                                    <td class="px-4 py-3">{{ $entry->department ? (\App\Http\Controllers\JobController::DEPT_CODES[$entry->department] ?? strtoupper($entry->department)) : '—' }}</td>
+                                    <td class="px-4 py-3">{{ $entry->bank ? config("kretivco.banks.{$entry->bank}.label") : '—' }}</td>
+                                    <td class="px-4 py-3 whitespace-nowrap">{{ ucfirst(str_replace('_', ' ', $entry->type)) }}</td>
+                                    <td class="px-4 py-3 text-right whitespace-nowrap font-semibold {{ $intoBank ? 'text-green-600' : ($outOfBank ? 'text-red-600' : '') }}">{{ $intoBank ? '+' : ($outOfBank ? '-' : '') }}RM {{ number_format($entry->amount, 2) }}</td>
                                 </tr>
                             @empty
-                                <tr><td colspan="6" class="px-4 py-8 text-center text-gray-400">No ledger entries.</td></tr>
+                                <tr><td colspan="8" class="px-4 py-8 text-center text-gray-400">No ledger entries.</td></tr>
                             @endforelse
                         </tbody>
                     </table>

@@ -13,6 +13,46 @@ return [
         'wisb' => ['label' => 'Waffiy Industries', 'color' => '#9B93A8'],
     ],
 
+    // Static "who does what" profile shown on the Departments page — copied
+    // from the live app. Keys match `departments` above.
+    'department_profiles' => [
+        'print' => [
+            'lead' => 'Nurfadilah (Interim)',
+            'services' => [
+                'Large Format — banner, bunting, backdrop',
+                'Small Format — business card, flyer, brochure, menu card',
+                'Corporate Gifts & Souvenirs',
+                'Packaging & Label',
+                'Digital & Offset Printing',
+            ],
+            'note' => 'Minor edit = KretivPrint handle. Custom design = loop KretivWork.',
+        ],
+        'work' => [
+            'lead' => 'Afiq Azlan (Interim)',
+            'services' => ['Sooco — Social Media Management', 'Graphic Design', 'Brand Identity', 'Copywriting & Content Strategy'],
+        ],
+        'tech' => [
+            'lead' => 'Amnan Syahmi',
+            'services' => ['Website Creation', 'Application Development', 'Sales Page / Landing Page'],
+            'products' => ['Undangan.my — Digital Wedding Invitation', 'Restu.ai — Digital Wedding Planner', 'Wedding Planner by Ila — Notion-based'],
+        ],
+        'event' => [
+            'lead' => 'Afiq Azlan (Interim)',
+            'services' => [
+                'Event Planning & Coordination',
+                'Vendor Management',
+                'Event Decoration & Setup',
+                'Emcee & Stage Performance',
+                'Corporate Events, Official Functions, Product Launch',
+            ],
+        ],
+        'wisb' => [
+            'lead' => 'Amirul Hafiz',
+            'services' => ['Supply & Sales of Industrial Machines'],
+            'note' => 'Strategic Partner — collaboration with Kretivco, not a department.',
+        ],
+    ],
+
     'roles' => [
         'bod' => ['label' => 'BOD', 'color' => '#E91E63', 'desc' => 'Full access — all departments, reports, settings'],
         'dept_head' => ['label' => 'Dept Head', 'color' => '#3A86FF', 'desc' => 'Own department(s) — jobs, reports'],

@@ -1,6 +1,12 @@
 <x-app-layout>
     <x-slot name="header">
-        <h2 class="font-semibold text-xl text-white leading-tight">Reports</h2>
+        <div class="flex items-center justify-between flex-wrap gap-3">
+            <div>
+                <h2 class="font-semibold text-xl text-white leading-tight">Reports</h2>
+                <p class="text-xs text-white/60 mt-0.5">Analysis &amp; Export</p>
+            </div>
+            <a href="{{ route('reports.export', ['from' => $from, 'to' => $to, 'department' => $department]) }}" class="px-4 py-2 bg-white/15 hover:bg-white/25 text-white text-xs font-semibold rounded-md">📥 Export Excel</a>
+        </div>
     </x-slot>
 
     <div class="py-8">

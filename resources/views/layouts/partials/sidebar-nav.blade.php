@@ -8,6 +8,7 @@
         ['key' => 'vendors', 'label' => 'Vendors', 'route' => 'vendors.index', 'icon' => '🏭'],
         ['key' => 'finance', 'label' => 'Finance', 'route' => 'finance.index', 'pattern' => 'finance.*', 'icon' => '💰', 'roles' => ['bod', 'dept_head']],
         ['key' => 'reports', 'label' => 'Reports', 'route' => 'reports.index', 'icon' => '📈', 'roles' => ['bod', 'dept_head']],
+        ['key' => 'departments', 'label' => 'Departments', 'route' => 'departments.index', 'icon' => '🏢'],
         ['key' => 'settings', 'label' => 'Settings', 'route' => 'settings.index', 'icon' => '⚙️', 'roles' => ['bod']],
     ];
 @endphp
@@ -32,6 +33,8 @@
             ['key' => 'mine', 'label' => 'My Jobs', 'icon' => '🙋'],
         ];
         $activeJobView = request()->routeIs('jobs.index') ? (request()->query('view', 'queue')) : null;
+        $financeSubmenu = ['finance.index' => ['Overview', '📊']] + collect(\App\Http\Controllers\FinanceReportController::REPORTS)->mapWithKeys(fn ($r, $k) => [$k => $r])->all();
+        $activeFinanceReport = request()->routeIs('finance.reports') ? request()->route('report') : (request()->routeIs('finance.index') ? 'finance.index' : null);
     @endphp
     @foreach ($navItems as $item)
         @continue(isset($item['roles']) && ! in_array($user->role, $item['roles'], true))
@@ -51,6 +54,17 @@
                        class="flex items-start gap-2 min-h-[34px] py-[7px] pl-11 pr-2.5 text-xs leading-tight {{ $activeJobView === $sub['key'] ? 'bg-white/[.08] text-white font-semibold' : 'text-white/45 font-normal' }}">
                         <span class="text-[13px] shrink-0 mt-px">{{ $sub['icon'] }}</span>
                         <span>{{ $sub['label'] }}</span>
+                    </a>
+                @endforeach
+            </div>
+        @endif
+        @if ($item['key'] === 'finance' && $active)
+            <div class="py-0.5 pb-1.5">
+                @foreach ($financeSubmenu as $key => [$label, $icon])
+                    <a href="{{ $key === 'finance.index' ? route('finance.index') : route('finance.reports', $key) }}"
+                       class="flex items-start gap-2 min-h-[34px] py-[7px] pl-11 pr-2.5 text-xs leading-tight {{ $activeFinanceReport === $key ? 'bg-white/[.08] text-white font-semibold' : 'text-white/45 font-normal' }}">
+                        <span class="text-[13px] shrink-0 mt-px">{{ $icon }}</span>
+                        <span>{{ $label }}</span>
                     </a>
                 @endforeach
             </div>

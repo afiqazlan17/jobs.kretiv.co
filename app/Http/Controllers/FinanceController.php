@@ -3,9 +3,13 @@
 namespace App\Http\Controllers;
 
 use App\Models\LedgerEntry;
+use App\Models\User;
+use App\Services\FinanceReports;
 use App\Services\LedgerService;
+use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\View\View;
 
 // Reports & Finance is a Dept Head+ capability (Staff/Intern cannot access
@@ -18,35 +22,62 @@ class FinanceController extends Controller
         $user = $request->user();
         abort_unless($user->isBod() || $user->isDeptHead(), 403);
 
-        $entries = LedgerEntry::query()
+        $entries = self::entriesFor($user);
+
+        $from = $this->date($request->query('from')) ?? now()->startOfYear();
+        $to = $this->date($request->query('to')) ?? now();
+        $reports = new FinanceReports($entries);
+        $period = $reports->between($from, $to);
+
+        $bankBalances = collect(config('kretivco.banks'))
+            ->mapWithKeys(fn ($bank, $key) => [$key => LedgerService::balanceFor($entries, "bank_{$key}")]);
+
+        $visibleDepts = collect(config('kretivco.departments'))
+            ->keys()->filter(fn ($key) => $user->isBod() || in_array($key, $user->visibleDepartments(), true))->values();
+
+        $department = $request->query('department', '');
+        $bank = $request->query('bank', '');
+        $ledger = $entries
+            ->when($department, fn ($e) => $e->where('department', $department))
+            ->when($bank, fn ($e) => $e->filter(fn (LedgerEntry $x) => $x->bank === $bank || in_array("bank_{$bank}", [$x->debit_account, $x->credit_account], true)))
+            ->sortByDesc('date')->values()->take(200);
+
+        return view('finance.index', [
+            'ledger' => $ledger,
+            'bankBalances' => $bankBalances,
+            'pl' => ['receivable' => $reports->upTo($to)->profitAndLoss()['receivable']] + $period->profitAndLoss(),
+            'collections' => $period->collectionsByBank(),
+            'deptBreakdown' => $period->departmentBreakdown($visibleDepts),
+            'from' => $from,
+            'to' => $to,
+            'department' => $department,
+            'bank' => $bank,
+        ]);
+    }
+
+    private function date(mixed $value): ?Carbon
+    {
+        try {
+            return $value ? Carbon::parse($value) : null;
+        } catch (\Throwable) {
+            return null;
+        }
+    }
+
+    /**
+     * Ledger entries a user may see: everything for BOD, otherwise their
+     * departments plus company-wide (department-less) entries.
+     *
+     * @return Collection<int, LedgerEntry>
+     */
+    public static function entriesFor(User $user)
+    {
+        return LedgerEntry::query()
             ->when(! $user->isBod(), fn ($q) => $q->where(function ($q) use ($user) {
                 $q->whereIn('department', $user->visibleDepartments())->orWhereNull('department');
             }))
             ->orderByDesc('date')
             ->get();
-
-        $bankBalances = collect(config('kretivco.banks'))
-            ->mapWithKeys(fn ($bank, $key) => [$key => LedgerService::balanceFor($entries, "bank_{$key}")]);
-
-        $deptPl = collect(config('kretivco.departments'))
-            ->filter(fn ($d, $key) => $user->isBod() || in_array($key, $user->visibleDepartments(), true))
-            ->mapWithKeys(function ($dept, $key) use ($entries) {
-                $revenue = LedgerService::balanceFor($entries, "revenue_{$key}");
-                $cogs = LedgerService::cogsForDept($entries, $key);
-
-                return [$key => ['revenue' => $revenue, 'cogs' => $cogs, 'profit' => $revenue - $cogs]];
-            });
-
-        $arOutstanding = LedgerService::balanceFor($entries, 'ar');
-
-        return view('finance.index', [
-            'entries' => $entries->take(100),
-            'bankBalances' => $bankBalances,
-            'deptPl' => $deptPl,
-            'arOutstanding' => $arOutstanding,
-            'department' => $request->query('department', ''),
-            'bank' => $request->query('bank', ''),
-        ]);
     }
 
     public function storeExpense(Request $request, LedgerService $ledger): RedirectResponse

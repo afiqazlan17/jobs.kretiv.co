@@ -65,4 +65,35 @@ class FinanceReportsTest extends TestCase
         $response->assertOk();
         $response->assertViewHas('totalJobs', 1);
     }
+
+    public function test_the_reports_page_exports_the_filtered_jobs_as_an_excel_file(): void
+    {
+        $bod = User::factory()->create(['role' => User::ROLE_BOD]);
+        $customer = Customer::create(['customer_id' => 'C001', 'name' => 'Acme']);
+        Job::create([
+            'job_id' => 'KP-2026-001', 'customer_id' => $customer->id, 'department' => 'print', 'job_type' => 'Banner',
+            'job_type_category' => 'client_project', 'status' => Job::STATUS_IN_PROGRESS, 'estimation_value' => 500,
+        ]);
+
+        $response = $this->actingAs($bod)->get(route('reports.export', ['from' => now()->startOfYear()->toDateString(), 'to' => now()->toDateString()]));
+
+        $response->assertOk();
+        $this->assertStringContainsString('spreadsheetml.sheet', $response->headers->get('content-type'));
+        $file = tempnam(sys_get_temp_dir(), 'x');
+        file_put_contents($file, $response->getContent());
+        $zip = new \ZipArchive;
+        $this->assertTrue($zip->open($file) === true);
+        $jobs = $zip->getFromName('xl/worksheets/sheet2.xml');
+        $this->assertStringContainsString('KP-2026-001', $jobs);
+        $this->assertStringContainsString('<v>500</v>', $jobs);
+        $zip->close();
+        unlink($file);
+    }
+
+    public function test_staff_cannot_export_reports(): void
+    {
+        $staff = User::factory()->create(['role' => User::ROLE_STAFF, 'department' => 'print']);
+
+        $this->actingAs($staff)->get(route('reports.export'))->assertForbidden();
+    }
 }
