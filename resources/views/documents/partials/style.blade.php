@@ -1,0 +1,36 @@
+<style>
+    @page { margin: 45pt 82.28pt 45pt 45pt; }
+    body { margin: 0; font-family: Helvetica, sans-serif; font-size: 10pt; line-height: 11.5pt; color: #141414; }
+    b, strong { font-weight: bold; }
+
+    .hdr { position: relative; height: 82.82pt; border-bottom: 0.75pt solid #999999; }
+    .abs { position: absolute; white-space: nowrap; }
+    .brand { font-size: 12pt; font-weight: bold; line-height: 13.8pt; }
+    .sub { font-size: 9pt; line-height: 10.35pt; color: #505050; }
+    .doc-title { font-size: 16pt; font-weight: bold; line-height: 18.4pt; }
+    .r { text-align: right; }
+
+    .block { margin-top: 19.48pt; }
+    .cust-label { line-height: 13.6pt; margin-bottom: 1pt; }
+    .cust-line { line-height: 12.8pt; }
+    .title-line { margin-top: 9pt; line-height: 13pt; }
+
+    table.grid { width: 468pt; border-collapse: collapse; margin-top: 9.62pt; margin-left: -0.25pt; }
+    table.grid th, table.grid td { border: 0.5pt solid #000000; padding: 4.53pt 5pt 5.97pt 4.75pt; line-height: 11.3pt; vertical-align: top; text-align: left; }
+    table.grid th { background: #f2f2f2; font-weight: bold; }
+    table.grid td { background: #f5f5f5; }
+    .c { text-align: center !important; }
+    .rt { text-align: right !important; }
+
+    .totals { margin-top: 20.08pt; }
+    .totals div { text-align: right; line-height: 15.75pt; margin-right: -0.4pt; }
+    .totals div:last-child { margin-right: -1.4pt; }
+
+    .note-title { margin-top: 19.5pt; font-weight: bold; line-height: 15.3pt; margin-bottom: 1pt; }
+    .note { color: #3c3c3c; line-height: 13.75pt; }
+    .thanks { line-height: 13.75pt; }
+
+    table.sign { width: 468pt; border-collapse: collapse; margin-top: 14.8pt; }
+    table.sign td { padding: 0 0 0 5.5pt; border: none; vertical-align: top; }
+    .sign-line { width: 166.7pt; border-top: 0.5pt solid #141414; margin-top: 34.47pt; }
+</style>
