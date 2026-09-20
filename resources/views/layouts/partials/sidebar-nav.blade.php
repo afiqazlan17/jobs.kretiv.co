@@ -3,7 +3,6 @@
     $navItems = [
         ['key' => 'dashboard', 'label' => 'Dashboard', 'route' => 'dashboard', 'icon' => '📊'],
         ['key' => 'jobs', 'label' => 'Job', 'route' => 'jobs.index', 'pattern' => 'jobs.*', 'icon' => '📋'],
-        ['key' => 'leads', 'label' => 'Leads', 'route' => 'leads.index', 'pattern' => 'leads.*', 'icon' => '🧲'],
         ['key' => 'customers', 'label' => 'Customers', 'route' => 'customers.index', 'icon' => '👥'],
         ['key' => 'vendors', 'label' => 'Vendors', 'route' => 'vendors.index', 'icon' => '🏭'],
         ['key' => 'finance', 'label' => 'Finance', 'route' => 'finance.index', 'pattern' => 'finance.*', 'icon' => '💰', 'roles' => ['bod', 'dept_head']],
