@@ -22,15 +22,18 @@
     .c { text-align: center !important; }
     .rt { text-align: right !important; }
 
-    .totals { margin-top: 20.08pt; }
-    .totals div { text-align: right; line-height: 15.75pt; margin-right: -0.4pt; }
-    .totals div:last-child { margin-right: -1.4pt; }
 
     .note-title { margin-top: 19.5pt; font-weight: bold; line-height: 15.3pt; margin-bottom: 1pt; }
-    .note { color: #3c3c3c; line-height: 13.75pt; }
-    .thanks { line-height: 13.75pt; }
 
     table.sign { width: 468pt; border-collapse: collapse; margin-top: 14.8pt; }
     table.sign td { padding: 0 0 0 5.5pt; border: none; vertical-align: top; }
     .sign-line { width: 166.7pt; border-top: 0.5pt solid #141414; margin-top: 34.47pt; }
+
+    table.tot { width: 145pt; margin: 14pt 0 0 323pt; border-collapse: collapse; }
+    table.tot td { padding: 2pt 5pt; line-height: 11.5pt; border: none; }
+    table.tot td.v { text-align: right; }
+    table.tot tr.grand td { font-weight: bold; border-top: 0.5pt solid #000000; padding-top: 5pt; }
+    table.notes-t { width: 468pt; border-collapse: collapse; }
+    table.notes-t td { padding: 0 0 3pt 0; vertical-align: top; color: #3c3c3c; line-height: 13.5pt; border: none; }
+    .thanks { margin-top: 12pt; font-weight: bold; }
 </style>

@@ -39,14 +39,14 @@
         </tbody>
     </table>
 
-    <div class="totals">
+    <table class="tot">
         @if ($showBreakdown)
-            <div><b>Subtotal:</b> RM {{ number_format($subtotal, 2) }}</div>
-            <div><b>Delivery:</b> RM {{ number_format($delivery, 2) }}</div>
-            <div><b>Discount:</b> (RM {{ number_format($discount, 2) }})</div>
+            <tr><td>Subtotal</td><td class="v">RM {{ number_format($subtotal, 2) }}</td></tr>
+            <tr><td>Delivery</td><td class="v">RM {{ number_format($delivery, 2) }}</td></tr>
+            <tr><td>Discount</td><td class="v">(RM {{ number_format($discount, 2) }})</td></tr>
         @endif
-        <div><b>Total (MYR):</b> RM {{ number_format($total, 2) }}</div>
-    </div>
+        <tr class="grand"><td>Total (MYR)</td><td class="v">RM {{ number_format($total, 2) }}</td></tr>
+    </table>
 
     @include('documents.partials.footer', ['bank' => $bank, 'receiptNote' => 'This receipt confirms payment received for the above jobs/invoice.'])
 </body>

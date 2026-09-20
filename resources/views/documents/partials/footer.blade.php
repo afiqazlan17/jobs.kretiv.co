@@ -15,9 +15,11 @@
     $notes[] = 'Whatsapp us at '.config('kretivco.brand.phone');
 @endphp
 <div class="note-title">Note:</div>
-@foreach ($notes as $i => $note)
-    <div class="note">{{ $i + 1 }}. {{ $note }}</div>
-@endforeach
+<table class="notes-t">
+    @foreach ($notes as $i => $note)
+        <tr><td style="width:14pt;">{{ $i + 1 }}.</td><td>{{ $note }}</td></tr>
+    @endforeach
+</table>
 <div class="thanks">Thank you for your business!</div>
 <table class="sign">
     <tr>
