@@ -25,6 +25,7 @@ class AttachmentController extends Controller
             'file' => ['required', 'file', 'max:20480'],
             'kind' => ['required', 'string', 'max:50'],
             'line_item_id' => ['nullable', 'string', 'max:50'],
+            'design' => ['nullable', 'integer', 'min:1', 'max:50'],
         ]);
 
         $slotKey = $validated['line_item_id'] ?? 'default';
@@ -36,6 +37,7 @@ class AttachmentController extends Controller
             'id' => (string) Str::uuid(),
             'kind' => $validated['kind'],
             'line_item_id' => $validated['line_item_id'] ?? null,
+            'design' => $validated['design'] ?? null,
             'path' => $path,
             'name' => $file->getClientOriginalName(),
             'uploaded_by' => $request->user()->name,

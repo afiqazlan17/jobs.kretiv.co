@@ -526,10 +526,72 @@
                 </div>
                 @endcan
 
+                @php
+                    $allAtt = collect($job->attachments ?? []);
+                    $artItems = collect($job->line_items ?? [])->map(fn ($i) => $i['item'] ?? ($i['desc'] ?? ''))->map(fn ($n) => trim($n) ?: $job->job_type)->values();
+                    if ($artItems->isEmpty()) { $artItems = collect([$job->job_type]); }
+                    $artGroups = $artItems->map(function ($name, $idx) use ($allAtt) {
+                        $mine = $allAtt->where('kind', 'artwork')->filter(fn ($a) => (string) ($a['line_item_id'] ?? '0') === (string) $idx);
+                        $designs = $mine->groupBy(fn ($a) => (int) ($a['design'] ?? 1))->sortKeys();
+                        return ['idx' => $idx, 'name' => $name, 'designs' => $designs, 'max' => max(1, (int) $designs->keys()->max())];
+                    });
+                    $otherAtt = $allAtt->reject(fn ($a) => ($a['kind'] ?? '') === 'artwork');
+                @endphp
                 <div class="bg-white shadow-sm sm:rounded-lg p-6">
-                    <h3 class="text-sm font-semibold text-gray-500 uppercase mb-4">Attachments</h3>
+                    <h3 class="text-sm font-semibold text-gray-500 uppercase mb-4">Artwork</h3>
+                    <div class="space-y-5">
+                    @foreach ($artGroups as $g)
+                        <div x-data="{ n: {{ $g['max'] }} }">
+                            <p class="text-sm font-semibold text-gray-700 mb-2">📎 {{ $g['name'] }}</p>
+                            <div class="space-y-2 pl-3 border-l-2 border-gray-100">
+                                <template x-for="d in n" :key="d">
+                                    <div x-data="{ ds: d }" class="text-sm">
+                                        <p class="text-xs font-semibold text-gray-500 mb-1" x-text="'Design ' + d"></p>
+                                        @foreach (range(1, $g['max']) as $d)
+                                            <div x-show="d === {{ $d }}" class="space-y-1">
+                                                @forelse ($g['designs']->get($d, collect()) as $att)
+                                                    <div class="flex items-center justify-between">
+                                                        <a href="{{ route('jobs.attachments.show', [$job, $att['id']]) }}" class="text-indigo-600 hover:underline">{{ $att['name'] }}</a>
+                                                        @can('update', $job)
+                                                        <form method="POST" action="{{ route('jobs.attachments.destroy', [$job, $att['id']]) }}" onsubmit="return confirm('Delete this file?')">
+                                                            @csrf @method('DELETE')
+                                                            <button type="submit" class="text-xs text-red-500 hover:underline">Delete</button>
+                                                        </form>
+                                                        @endcan
+                                                    </div>
+                                                @empty
+                                                    <p class="text-gray-400 text-xs">No files</p>
+                                                @endforelse
+                                            </div>
+                                        @endforeach
+                                        <div x-show="d > {{ $g['max'] }}"><p class="text-gray-400 text-xs">No files</p></div>
+                                        @can('update', $job)
+                                        <form method="POST" action="{{ route('jobs.attachments.store', $job) }}" enctype="multipart/form-data" class="mt-1">
+                                            @csrf
+                                            <input type="hidden" name="kind" value="artwork">
+                                            <input type="hidden" name="line_item_id" value="{{ $g['idx'] }}">
+                                            <input type="hidden" name="design" :value="d">
+                                            <label class="inline-block cursor-pointer text-xs font-semibold px-3 py-1.5 rounded-md border border-gray-300 text-gray-700 hover:bg-gray-50">
+                                                + Upload
+                                                <input type="file" name="file" required accept="image/*,.pdf,.eml,.msg" class="hidden" onchange="this.form.submit()">
+                                            </label>
+                                        </form>
+                                        @endcan
+                                    </div>
+                                </template>
+                            </div>
+                            @can('update', $job)
+                            <button type="button" @click="n++" class="mt-2 text-xs text-indigo-600 hover:underline">+ Add another design</button>
+                            @endcan
+                        </div>
+                    @endforeach
+                    </div>
+                </div>
+
+                <div class="bg-white shadow-sm sm:rounded-lg p-6">
+                    <h3 class="text-sm font-semibold text-gray-500 uppercase mb-4">Other Files</h3>
                     <div class="space-y-2 text-sm mb-4">
-                        @forelse ($job->attachments ?? [] as $att)
+                        @forelse ($otherAtt as $att)
                             <div class="flex items-center justify-between border-b border-gray-100 pb-2">
                                 <a href="{{ route('jobs.attachments.show', [$job, $att['id']]) }}" class="text-indigo-600 hover:underline">{{ $att['name'] }}</a>
                                 <div class="flex items-center gap-3 text-xs text-gray-400">
@@ -544,14 +606,13 @@
                                 </div>
                             </div>
                         @empty
-                            <p class="text-gray-400">No attachments.</p>
+                            <p class="text-gray-400">No other files.</p>
                         @endforelse
                     </div>
                     @can('update', $job)
                     <form method="POST" action="{{ route('jobs.attachments.store', $job) }}" enctype="multipart/form-data" class="flex flex-wrap items-end gap-2">
                         @csrf
                         <select name="kind" class="rounded-md border-gray-300 shadow-sm text-sm">
-                            <option value="artwork">Artwork</option>
                             <option value="approval">Customer Approval</option>
                             <option value="document">Document</option>
                         </select>

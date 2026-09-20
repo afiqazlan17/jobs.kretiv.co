@@ -200,6 +200,9 @@ class DocumentControllerTest extends TestCase
         $receipt = implode("\n", DocumentData::defaultNotes('receipt', $bank));
 
         $this->assertStringContainsString('80% deposit', $quotation);
+        $this->assertStringContainsString('Please make payment to MAYBANK | 5621-0668-8317 | KRETIVCO MEDIAWORKS.', $quotation);
+        $this->assertSame('AFFIN', config('kretivco.bank_details.affin.label'));
+        $this->assertSame('105630012033', config('kretivco.bank_details.affin.acct'));
         $this->assertStringContainsString('Payment due within 7 days from the invoice date.', $invoice);
         $this->assertStringContainsString('surcharge as agreed in the service agreement', $invoice);
         $this->assertStringNotContainsString('80% deposit', $invoice);

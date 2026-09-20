@@ -14,7 +14,6 @@ trait GeneratesJobIds
         'print' => 'KP',
         'work' => 'KW',
         'tech' => 'KT',
-        'machine' => 'KM',
         'event' => 'KE',
         'wisb' => 'WISB',
     ];

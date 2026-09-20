@@ -8,7 +8,6 @@ return [
         'print' => ['label' => 'KretivPrint', 'color' => '#E85D04'],
         'work' => ['label' => 'KretivWork', 'color' => '#7209B7'],
         'tech' => ['label' => 'KretivTech', 'color' => '#3A86FF'],
-        'machine' => ['label' => 'KretivMachine', 'color' => '#6B7280'],
         'event' => ['label' => 'KretivEvent', 'color' => '#E91E63'],
         'wisb' => ['label' => 'Waffiy Industries', 'color' => '#9B93A8'],
     ],
@@ -211,7 +210,7 @@ return [
 
     'bank_details' => [
         'mbb' => ['label' => 'MAYBANK', 'acct' => '5621-0668-8317', 'name' => 'KRETIVCO MEDIAWORKS'],
-        'affin' => ['label' => 'AFFIN', 'acct' => 'XXXX-XXXX-XXXX', 'name' => 'KRETIVCO MEDIAWORKS'],
+        'affin' => ['label' => 'AFFIN', 'acct' => '105630012033', 'name' => 'KRETIVCO MEDIAWORKS'],
     ],
 
     // Picking a department attributes the cost to that department (cost of

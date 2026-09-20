@@ -59,7 +59,7 @@ class DocumentData
             'Whatsapp us at '.config('kretivco.brand.phone'),
         ];
 
-        $payTo = $bank ? ["Please make payment to {$bank['label']} {$bank['acct']} {$bank['name']}."] : [];
+        $payTo = $bank ? ["Please make payment to {$bank['label']} | {$bank['acct']} | {$bank['name']}."] : [];
 
         return match ($type) {
             'quotation' => array_merge($payTo, [
