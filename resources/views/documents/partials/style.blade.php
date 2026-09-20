@@ -30,6 +30,7 @@
     .sign-line { width: 166.7pt; border-top: 0.5pt solid #141414; margin-top: 34.47pt; }
 
     table.tot { width: 145pt; margin: 14pt 0 0 323pt; border-collapse: collapse; }
+    table.tot.wide { width: 195pt; margin-left: 273pt; }
     table.tot td { padding: 2pt 5pt; line-height: 11.5pt; border: none; }
     table.tot td.v { text-align: right; }
     table.tot tr.grand td { font-weight: bold; border-top: 0.5pt solid #000000; padding-top: 5pt; }

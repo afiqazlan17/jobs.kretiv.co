@@ -5,61 +5,124 @@ namespace App\Http\Controllers;
 use App\Models\ActivityLog;
 use App\Models\Job;
 use App\Models\JobDocument;
+use App\Models\LedgerEntry;
 use App\Services\LedgerService;
+use App\Support\DocumentData;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\Rule;
 use Symfony\Component\HttpFoundation\Response;
 
-// Generates Quotation/Proforma Invoice/Invoice/Receipt PDFs — the Laravel
-// dompdf equivalent of the old app's jsPDF generator (lib/pdf-generator.js).
-// Only Invoice/Receipt post a LedgerService entry (money has actually
-// moved or been formally billed); Quotation/Proforma are pre-sale
-// documents and never touch the ledger. Every generated document is
-// archived to storage and recorded as a JobDocument row so it shows up
-// in the job's Documents history, regardless of type.
+// Quotation/Proforma Invoice/Invoice/Receipt PDFs (dompdf), driven by the
+// preview modal on the job page: `draft` hands the modal its defaults,
+// `preview` renders the live PDF without storing anything, `save` writes
+// the edited items/delivery/discount back to the job, and `generate`
+// archives the document (JobDocument row + activity log) and, for
+// Invoice/Receipt only, posts to the ledger — Quotation/Proforma are
+// pre-sale documents and never touch it.
 class DocumentController extends Controller
 {
-    public function quotation(Request $request, Job $job)
+    public function draft(Request $request, Job $job, string $type): JsonResponse
     {
         $this->authorize('update', $job);
+        $this->ensureAllowed($job, $type);
 
-        return $this->renderPdf('quotation', $job, (float) ($job->estimation_value ?? 0), $this->docNumber('QT', $job), $request);
+        $invoice = $this->invoiceEntry($job);
+
+        return response()->json([
+            'doc_number' => DocumentData::number($type, $job),
+            'label' => DocumentData::label($type),
+            'customer_phone' => $job->customer?->phone,
+            'invoice_number' => $invoice?->doc_number,
+            'invoice_total' => $invoice ? (float) $invoice->amount : null,
+            'payment_methods' => DocumentData::PAYMENT_METHODS,
+            'defaults' => DocumentData::defaults($job, $type, $request->user()->name, $invoice ? (float) $invoice->amount : null),
+        ]);
     }
 
-    public function proforma(Request $request, Job $job)
+    public function preview(Request $request, Job $job, string $type): Response
     {
         $this->authorize('update', $job);
+        $this->ensureAllowed($job, $type);
 
-        return $this->renderPdf('proforma', $job, (float) ($job->estimation_value ?? 0), $this->docNumber('PI', $job), $request);
+        $doc = $this->buildDoc($request, $job, $type);
+
+        return response(Pdf::loadView('documents.pdf', ['doc' => $doc])->output(), 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'inline; filename="preview.pdf"',
+        ]);
     }
 
-    public function invoice(Request $request, Job $job, LedgerService $ledger)
+    /** Persists the modal's job-level edits (items, delivery, discount, title). */
+    public function save(Request $request, Job $job, string $type): JsonResponse
     {
         $this->authorize('update', $job);
+        $this->ensureAllowed($job, $type);
 
-        $docNumber = $this->docNumber('INV', $job);
-        $entry = $ledger->postInvoiceEntry($job, $docNumber, $request->user()->name);
+        $doc = $this->buildDoc($request, $job, $type);
 
-        if (! $entry) {
-            return back()->with('success', 'Nothing to post — amount is empty.');
+        $oldValue = $job->estimation_value;
+        $job->update([
+            'job_type' => $doc['title'],
+            'line_items' => array_map(fn ($i) => [
+                'item' => $i['item'],
+                'desc' => $i['desc'],
+                'size' => '',
+                'qty' => $i['qty'],
+                'price' => $i['price'],
+            ], $doc['items']),
+            'delivery_amount' => $doc['delivery'] ?: null,
+            'discount_amount' => $doc['discount'] ?: null,
+            'estimation_value' => $doc['total'],
+        ]);
+
+        if ((float) $oldValue !== (float) $doc['total']) {
+            ActivityLog::create([
+                'job_id' => $job->id,
+                'job_code' => $job->job_id,
+                'user_id' => $request->user()->id,
+                'user_name' => $request->user()->name,
+                'action' => 'edited',
+                'field_changed' => 'estimation_value',
+                'old_value' => $oldValue,
+                'new_value' => number_format($doc['total'], 2, '.', ''),
+            ]);
         }
 
-        return $this->renderPdf('invoice', $job, (float) $entry->amount, $docNumber, $request);
+        return response()->json(['message' => "{$job->job_id} saved."]);
     }
 
-    public function receipt(Request $request, Job $job, LedgerService $ledger)
+    public function generate(Request $request, Job $job, string $type, LedgerService $ledger): Response
     {
         $this->authorize('update', $job);
+        $this->ensureAllowed($job, $type);
 
-        $docNumber = $this->docNumber('RC', $job);
-        $entry = $ledger->postReceiptEntry($job, $docNumber, $request->user()->name);
+        $doc = $this->buildDoc($request, $job, $type);
+        $docNumber = $doc['doc_number'];
+        $userName = $request->user()->name;
 
-        if (! $entry) {
-            return back()->with('success', 'Nothing to post — amount is empty.');
+        if ($type === 'invoice') {
+            abort_unless($ledger->postInvoiceEntry($job, $docNumber, $userName, $doc['total']), 422, 'Nothing to post — the invoice total is empty.');
         }
 
-        return $this->renderPdf('receipt', $job, (float) $entry->amount, $docNumber, $request);
+        if ($type === 'receipt') {
+            abort_if($doc['amount_paid'] > $doc['invoice_total'] + 0.005, 422, 'Amount paid cannot be more than the invoice total.');
+            abort_unless($ledger->postReceiptEntry($job, $docNumber, $userName, $doc['amount_paid']), 422, 'Nothing to post — the amount paid is empty.');
+        }
+
+        $bytes = Pdf::loadView('documents.pdf', ['doc' => $doc])->output();
+        $filename = "{$docNumber}_{$job->job_id}.pdf";
+        $path = "{$job->job_id}/document/".time()."_{$filename}";
+        Storage::disk('public')->put($path, $bytes);
+
+        $this->archiveDocument($type, $job, $docNumber, $path, $filename, $request);
+
+        return response($bytes, 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => "attachment; filename=\"{$filename}\"",
+        ]);
     }
 
     /**
@@ -77,7 +140,7 @@ class DocumentController extends Controller
         $this->authorize('update', $job);
 
         $validated = $request->validate([
-            'doc_type' => ['required', 'in:quotation,proforma,invoice,receipt'],
+            'doc_type' => ['required', Rule::in(DocumentData::TYPES)],
             'job_ids' => ['required', 'array', 'min:1'],
             'job_ids.*' => ['integer', 'exists:jobs,id'],
         ]);
@@ -99,8 +162,7 @@ class DocumentController extends Controller
         abort_if($jobs->pluck('status')->unique()->count() > 1, 422, "Job statuses don't match — align the statuses first before combining.");
 
         $type = $validated['doc_type'];
-        $prefix = ['quotation' => 'QT', 'proforma' => 'PI', 'invoice' => 'INV', 'receipt' => 'RC'][$type];
-        $docNumber = $this->docNumber($prefix, $job).'-C';
+        $docNumber = DocumentData::number($type, $job).'-C';
 
         $amounts = $jobs->mapWithKeys(function (Job $j) use ($type, $ledger, $request, $docNumber) {
             if (in_array($type, ['invoice', 'receipt'], true)) {
@@ -149,28 +211,61 @@ class DocumentController extends Controller
         return Storage::disk('public')->response($document->storage_path, $document->filename);
     }
 
-    private function renderPdf(string $type, Job $job, float $amount, string $docNumber, Request $request): Response
+    /** The invoice currently on the ledger for this job — what a Receipt pays against. */
+    public static function invoiceEntry(Job $job): ?LedgerEntry
     {
-        $pdf = Pdf::loadView('documents.pdf', [
-            'type' => $type,
-            'job' => $job,
-            'amount' => $amount,
-            'docNumber' => $docNumber,
-            'generatedBy' => $request->user()->name,
+        return LedgerEntry::where('job_id', $job->job_id)->where('type', 'invoice')->where('reversed', false)->latest('id')->first();
+    }
+
+    private function ensureAllowed(Job $job, string $type): void
+    {
+        abort_unless(in_array($type, DocumentData::TYPES, true), 404);
+
+        abort_unless(
+            in_array($job->status, [Job::STATUS_IN_PROGRESS, Job::STATUS_COMPLETED], true),
+            422,
+            'Job not yet claimed — use "Take In Job" first before generating documents.'
+        );
+
+        abort_if(
+            $type === 'receipt' && ! self::invoiceEntry($job),
+            422,
+            'Generate an Invoice for this job first — Receipt only records payment against an existing invoice.'
+        );
+    }
+
+    /** @return array<string, mixed> */
+    private function buildDoc(Request $request, Job $job, string $type): array
+    {
+        $data = $request->validate([
+            'customer_name' => ['nullable', 'string', 'max:255'],
+            'company' => ['nullable', 'string', 'max:255'],
+            'address_line_1' => ['nullable', 'string', 'max:255'],
+            'address_line_2' => ['nullable', 'string', 'max:500'],
+            'title' => ['required', 'string', 'max:255'],
+            'by_staff' => ['nullable', 'string', 'max:255'],
+            'items' => ['nullable', 'array', 'max:50'],
+            'items.*.item' => ['nullable', 'string', 'max:1000'],
+            'items.*.desc' => ['nullable', 'string', 'max:2000'],
+            'items.*.qty' => ['nullable', 'numeric', 'min:0'],
+            'items.*.price' => ['nullable', 'numeric', 'min:0'],
+            'delivery' => ['nullable', 'numeric', 'min:0'],
+            'discount' => ['nullable', 'numeric', 'min:0'],
+            'notes' => ['nullable', 'string', 'max:5000'],
+            'payment_method' => ['nullable', Rule::in(DocumentData::PAYMENT_METHODS)],
+            'amount_paid' => ['nullable', 'numeric', 'min:0'],
         ]);
 
-        $filename = "{$docNumber}_{$job->job_id}.pdf";
-        $bytes = $pdf->output();
+        $invoice = $type === 'receipt' ? self::invoiceEntry($job) : null;
 
-        $path = "{$job->job_id}/document/".time()."_{$filename}";
-        Storage::disk('public')->put($path, $bytes);
-
-        $this->archiveDocument($type, $job, $docNumber, $path, $filename, $request);
-
-        return response($bytes, 200, [
-            'Content-Type' => 'application/pdf',
-            'Content-Disposition' => "attachment; filename=\"{$filename}\"",
-        ]);
+        return DocumentData::build(
+            $job,
+            $type,
+            $data,
+            DocumentData::number($type, $job),
+            $request->user()->name,
+            $invoice ? (float) $invoice->amount : null,
+        );
     }
 
     private function archiveDocument(string $type, Job $job, string $docNumber, string $path, string $filename, Request $request, string $suffix = ''): void
@@ -194,18 +289,5 @@ class DocumentController extends Controller
             'action' => 'document_generated',
             'detail' => "generated {$label} ({$docNumber}){$suffix}",
         ]);
-    }
-
-    /**
-     * Not a persisted running counter — derived from the job's own ID
-     * digits, same as the old app's genDocNumber(). Regenerating the same
-     * doc_type for a job reuses the same number (the newest JobDocument
-     * row of that type is simply "current"; older ones stay archived).
-     */
-    private function docNumber(string $prefix, Job $job): string
-    {
-        $sequence = last(explode('-', $job->job_id)) ?: '001';
-
-        return $prefix.'-'.now()->year.'-'.str_pad($sequence, 3, '0', STR_PAD_LEFT);
     }
 }

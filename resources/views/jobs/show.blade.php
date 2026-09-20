@@ -303,12 +303,29 @@
                 <div class="bg-white shadow-sm sm:rounded-lg p-6" x-data="{ showCombine: false }">
                     <h3 class="text-sm font-semibold text-gray-500 uppercase mb-4">Documents</h3>
                     @can('update', $job)
+                    @php
+                        $docsLocked = ! in_array($job->status, [\App\Models\Job::STATUS_IN_PROGRESS, \App\Models\Job::STATUS_COMPLETED], true);
+                        $docButtons = [
+                            'quotation' => ['📄 Quotation', '#6366F1'],
+                            'proforma' => ['📋 Proforma Invoice', '#3A86FF'],
+                            'invoice' => ['📑 Invoice', '#10B981'],
+                            'receipt' => ['🧾 Receipt', '#E85D04'],
+                        ];
+                    @endphp
                     <div class="flex flex-wrap gap-2 mb-2">
-                        <a href="{{ route('jobs.quotation', $job) }}" class="text-xs font-semibold px-3 py-2 rounded-md text-white hover:opacity-90" style="background: #6366F1">📄 Quotation</a>
-                        <a href="{{ route('jobs.proforma', $job) }}" class="text-xs font-semibold px-3 py-2 rounded-md text-white hover:opacity-90" style="background: #3A86FF">📋 Proforma</a>
-                        <a href="{{ route('jobs.invoice', $job) }}" class="text-xs font-semibold px-3 py-2 rounded-md bg-green-600 text-white hover:bg-green-700">📑 Invoice</a>
-                        <a href="{{ route('jobs.receipt', $job) }}" class="text-xs font-semibold px-3 py-2 rounded-md text-white hover:opacity-90" style="background: #E85D04">🧾 Receipt</a>
+                        @foreach ($docButtons as $docType => [$docLabel, $docColor])
+                            @php $docDisabled = $docsLocked || ($docType === 'receipt' && ! $hasInvoice); @endphp
+                            <button type="button"
+                                    @if ($docDisabled) disabled title="{{ $docsLocked ? 'Take In Job first before generating documents.' : 'Generate an Invoice for this job first — Receipt only records payment against an existing invoice.' }}" @else @click="$dispatch('open-document', { type: '{{ $docType }}' })" @endif
+                                    class="text-xs font-semibold px-3 py-2 rounded-md text-white {{ $docDisabled ? 'opacity-40 cursor-not-allowed' : 'hover:opacity-90' }}"
+                                    style="background: {{ $docColor }}">{{ $docLabel }}</button>
+                        @endforeach
                     </div>
+                    @if ($docsLocked)
+                        <p class="text-xs text-red-500 italic mb-3">⚠ Job not yet claimed — use "Take In Job" in the Action menu first before generating documents.</p>
+                    @elseif (! $hasInvoice)
+                        <p class="text-xs text-red-500 italic mb-3">⚠ Generate an Invoice before Receipt — Receipt only records payment against an existing invoice, it doesn't create revenue on its own.</p>
+                    @endif
 
                     @if ($combineCandidates->isNotEmpty())
                         <button type="button" @click="showCombine = !showCombine" class="text-xs font-semibold text-pink-600 hover:underline mb-4">🔗 Combine with Other Job (Same Customer)</button>
@@ -361,6 +378,10 @@
                         </div>
                     @endif
                 </div>
+
+                @can('update', $job)
+                    @include('jobs.partials.document-modal')
+                @endcan
 
                 <div class="bg-white shadow-sm sm:rounded-lg p-6" x-data="{ showVendorForm: false, payingId: null }">
                     @php

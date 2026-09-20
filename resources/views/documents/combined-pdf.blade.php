@@ -12,11 +12,11 @@
         $delivery = $showBreakdown ? (float) $jobs->sum('delivery_amount') : 0;
         $discount = $showBreakdown ? (float) $jobs->sum('discount_amount') : 0;
         $total = $showBreakdown ? $subtotal + $delivery - $discount : $subtotal;
-        $bank = $jobs->first()->bank ? config('kretivco.bank_details.'.$jobs->first()->bank) : null;
+        $notes = \App\Support\DocumentData::defaultNotes($type, \App\Support\DocumentData::bank($jobs->first()));
     @endphp
 
     @include('documents.partials.header')
-    @include('documents.partials.customer', ['customer' => $customer])
+    @include('documents.partials.customer', ['customer' => \App\Support\DocumentData::customerBlock($customer)])
 
     <table class="grid">
         <thead>
@@ -48,6 +48,6 @@
         <tr class="grand"><td>Total (MYR)</td><td class="v">RM {{ number_format($total, 2) }}</td></tr>
     </table>
 
-    @include('documents.partials.footer', ['bank' => $bank, 'receiptNote' => 'This receipt confirms payment received for the above jobs/invoice.'])
+    @include('documents.partials.footer', ['notes' => $notes])
 </body>
 </html>

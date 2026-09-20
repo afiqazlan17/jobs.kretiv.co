@@ -59,10 +59,12 @@ Route::middleware('auth')->group(function () {
     Route::post('/jobs/{job}/attachments', [AttachmentController::class, 'store'])->name('jobs.attachments.store');
     Route::get('/jobs/{job}/attachments/{attachmentId}', [AttachmentController::class, 'show'])->name('jobs.attachments.show');
     Route::delete('/jobs/{job}/attachments/{attachmentId}', [AttachmentController::class, 'destroy'])->name('jobs.attachments.destroy');
-    Route::get('/jobs/{job}/quotation', [DocumentController::class, 'quotation'])->name('jobs.quotation');
-    Route::get('/jobs/{job}/proforma', [DocumentController::class, 'proforma'])->name('jobs.proforma');
-    Route::get('/jobs/{job}/invoice', [DocumentController::class, 'invoice'])->name('jobs.invoice');
-    Route::get('/jobs/{job}/receipt', [DocumentController::class, 'receipt'])->name('jobs.receipt');
+    Route::prefix('/jobs/{job}/documents/{type}')->whereIn('type', ['quotation', 'proforma', 'invoice', 'receipt'])->group(function () {
+        Route::get('/draft', [DocumentController::class, 'draft'])->name('jobs.documents.draft');
+        Route::post('/preview', [DocumentController::class, 'preview'])->name('jobs.documents.preview');
+        Route::post('/save', [DocumentController::class, 'save'])->name('jobs.documents.save');
+        Route::post('/generate', [DocumentController::class, 'generate'])->name('jobs.documents.generate');
+    });
     Route::get('/jobs/{job}/documents/{document}', [DocumentController::class, 'showDocument'])->name('jobs.documents.show');
     Route::post('/jobs/{job}/documents/combine', [DocumentController::class, 'combine'])->name('jobs.documents.combine');
     Route::post('/jobs/{job}/vendor-costs', [JobVendorCostController::class, 'store'])->name('jobs.vendor-costs.store');

@@ -59,15 +59,16 @@
                                     ['k' => 'customer', 'l' => 'Customer'],
                                     ['k' => 'dept', 'l' => 'Dept'],
                                     ['k' => null, 'l' => 'Job Name'],
+                                    ['k' => null, 'l' => 'Vendor'],
                                     ['k' => 'status', 'l' => 'Status'],
                                     ['k' => 'value', 'l' => 'Est. Value'],
                                     ['k' => null, 'l' => 'PIC'],
                                     ['k' => 'deadline', 'l' => 'Deadline'],
-                                    ['k' => 'touched', 'l' => 'Last Changed', 'hideBelow2xl' => true],
+                                    ['k' => 'touched', 'l' => 'Last Changed'],
                                 ];
                             @endphp
                             @foreach ($cols as $col)
-                                <th class="px-4 py-3 whitespace-nowrap {{ !empty($col['hideBelow2xl']) ? 'hidden 2xl:table-cell' : '' }}">
+                                <th class="px-4 py-3 whitespace-nowrap ">
                                     @if ($col['k'])
                                         @php $nextDir = ($sortCol === $col['k'] && $sortDir === 'asc') ? 'desc' : 'asc'; @endphp
                                         <a href="{{ request()->fullUrlWithQuery(['sort' => $col['k'], 'dir' => $nextDir]) }}" class="hover:text-gray-700">
@@ -111,6 +112,7 @@
                                         <span class="ml-1 text-[10px] font-semibold rounded-full px-2 py-0.5 bg-amber-50 text-amber-600" title="Vendor cost recorded but not yet marked as paid">🏭 Unpaid</span>
                                     @endif
                                 </td>
+                                <td class="px-4 py-3 text-gray-600 whitespace-nowrap">{{ $job->vendor_names->isEmpty() ? '—' : $job->vendor_names->join(', ') }}</td>
                                 <td class="px-4 py-3 whitespace-nowrap">
                                     @if ($st)
                                         <span class="text-xs font-semibold rounded-full px-3 py-1" style="color:{{ $st['color'] }};background:{{ $st['color'] }}15">{{ $st['icon'] ?? '' }} {{ $st['label'] }}</span>
@@ -140,7 +142,7 @@
                                         <span class="text-xs text-gray-400">—</span>
                                     @endif
                                 </td>
-                                <td class="px-4 py-3 text-gray-400 whitespace-nowrap text-xs hidden 2xl:table-cell">{{ $job->last_touched?->format('d M Y, g:ia') ?? '—' }}</td>
+                                <td class="px-4 py-3 text-gray-400 whitespace-nowrap text-xs">{{ $job->last_touched?->format('d M Y, g:ia') ?? '—' }}</td>
                             </tr>
                         @empty
                             <tr><td colspan="9" class="px-4 py-8 text-center text-gray-400">No jobs found.</td></tr>

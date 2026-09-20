@@ -132,4 +132,14 @@ class VendorCostTest extends TestCase
 
         $response->assertForbidden();
     }
+
+    public function test_the_job_list_shows_which_vendors_a_job_uses(): void
+    {
+        $bod = User::factory()->create(['role' => User::ROLE_BOD]);
+        $vendor = $this->vendor();
+        $this->job(['vendor_costs' => [['id' => 'c1', 'vendor_id' => $vendor->id, 'estimated_cost' => 100, 'status' => 'unpaid']]]);
+        $this->job(['job_id' => 'KP-2026-002']);
+
+        $this->actingAs($bod)->get(route('jobs.index'))->assertOk()->assertSee('ABC Printing')->assertSee('Vendor');
+    }
 }

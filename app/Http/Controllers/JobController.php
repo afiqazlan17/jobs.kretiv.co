@@ -92,6 +92,10 @@ class JobController extends Controller
             );
         });
 
+        $vendorNames = Vendor::whereIn('id', $jobs->flatMap(fn (Job $job) => collect($job->vendor_costs ?? [])->pluck('vendor_id'))->filter()->unique())->pluck('name', 'id');
+        $jobs->each(fn (Job $job) => $job->vendor_names = collect($job->vendor_costs ?? [])
+            ->map(fn (array $v) => $vendorNames[$v['vendor_id'] ?? null] ?? null)->filter()->unique()->values());
+
         // Sibling jobs sharing a project_id (created together across
         // departments) — surfaced as a 🔗 badge next to the Job ID.
         $projectIds = $jobs->pluck('project_id')->filter()->unique()->values();
@@ -362,6 +366,7 @@ class JobController extends Controller
         return view('jobs.show', [
             'job' => $job,
             'documents' => $documents,
+            'hasInvoice' => DocumentController::invoiceEntry($job) !== null,
             'vendors' => Vendor::orderBy('name')->get(),
             'siblings' => $job->project_id
                 ? Job::where('project_id', $job->project_id)->where('id', '!=', $job->id)->get()

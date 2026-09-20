@@ -5,62 +5,77 @@
     @include('documents.partials.style')
 </head>
 <body>
-    @php
-        $noLabel = ['quotation' => 'QNo#', 'proforma' => 'Invoice No#', 'invoice' => 'Invoice No#', 'receipt' => 'Receipt No#'][$type] ?? 'No#';
-        $lineItems = $job->line_items ?? [];
-        $showBreakdown = in_array($type, ['quotation', 'proforma'], true);
-        $subtotal = $showBreakdown && count($lineItems)
-            ? collect($lineItems)->sum(fn ($i) => (float) ($i['qty'] ?? 1) * (float) ($i['price'] ?? 0))
-            : $amount;
-        $delivery = $showBreakdown ? (float) ($job->delivery_amount ?? 0) : 0;
-        $discount = $showBreakdown ? (float) ($job->discount_amount ?? 0) : 0;
-        $total = $showBreakdown ? $subtotal + $delivery - $discount : $amount;
-        $rows = count($lineItems) ? $lineItems : [['item' => $job->job_type, 'desc' => null, 'qty' => 1, 'price' => $amount]];
-        $bank = $job->bank ? config("kretivco.bank_details.{$job->bank}") : null;
-    @endphp
+    @include('documents.partials.header', ['type' => $doc['type'], 'noLabel' => $doc['no_label'], 'docNumber' => $doc['doc_number'], 'generatedBy' => $doc['by']])
+    @include('documents.partials.customer', ['customer' => $doc['customer']])
 
-    @include('documents.partials.header')
-    @include('documents.partials.customer', ['customer' => $job->customer])
+    <div class="title-line"><b>Title:</b> {{ $doc['title'] }}</div>
 
-    <div class="title-line"><b>Title:</b> {{ $job->job_type }}</div>
-
-    <table class="grid">
-        <thead>
-            <tr>
-                <th style="width:24.75pt;">No</th>
-                <th style="width:217.75pt;">Description</th>
-                <th style="width:49.75pt;">Unit</th>
-                <th style="width:59.75pt;">Price</th>
-                <th style="width:64.75pt;">Amount</th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach ($rows as $i => $item)
-                @php $qty = $item['qty'] ?? 1; $price = (float) ($item['price'] ?? 0); @endphp
+    @if ($doc['type'] === 'receipt')
+        <table class="grid">
+            <thead>
                 <tr>
-                    <td class="c">{{ $i + 1 }}</td>
-                    <td>
-                        @foreach (collect([$item['item'] ?? null, $item['desc'] ?? null])->filter()->unique()->values() as $line)
-                            <div>{!! nl2br(e($line)) !!}</div>
-                        @endforeach
-                    </td>
-                    <td class="c">{{ $qty }}</td>
-                    <td class="rt">RM {{ number_format($price, 2) }}</td>
-                    <td class="rt">RM {{ number_format($qty * $price, 2) }}</td>
+                    <th style="width:24.75pt;">No</th>
+                    <th style="width:197.75pt;">Description</th>
+                    <th style="width:104.75pt;">Payment Method</th>
+                    <th style="width:99.75pt;">Amount</th>
                 </tr>
-            @endforeach
-        </tbody>
-    </table>
+            </thead>
+            <tbody>
+                @foreach ($doc['items'] as $i => $item)
+                    <tr>
+                        <td class="c">{{ $i + 1 }}</td>
+                        <td>
+                            @foreach (collect([$item['item'], $item['desc']])->filter()->unique()->values() as $line)
+                                <div>{!! nl2br(e($line)) !!}</div>
+                            @endforeach
+                        </td>
+                        <td>{{ $i === 0 ? $doc['payment_method'] : '' }}</td>
+                        <td class="rt">RM {{ number_format($item['amount'], 2) }}</td>
+                    </tr>
+                @endforeach
+            </tbody>
+        </table>
 
-    <table class="tot">
-        @if ($showBreakdown)
-            <tr><td>Subtotal</td><td class="v">RM {{ number_format($subtotal, 2) }}</td></tr>
-            <tr><td>Delivery</td><td class="v">RM {{ number_format($delivery, 2) }}</td></tr>
-            <tr><td>Discount</td><td class="v">(RM {{ number_format($discount, 2) }})</td></tr>
-        @endif
-        <tr class="grand"><td>Total (MYR)</td><td class="v">RM {{ number_format($total, 2) }}</td></tr>
-    </table>
+        <table class="tot wide">
+            <tr><td>Amount Paid (MYR)</td><td class="v">RM {{ number_format($doc['amount_paid'], 2) }}</td></tr>
+            <tr class="grand"><td>Balance Due (MYR)</td><td class="v">RM {{ number_format($doc['balance_due'], 2) }}</td></tr>
+        </table>
+    @else
+        <table class="grid">
+            <thead>
+                <tr>
+                    <th style="width:24.75pt;">No</th>
+                    <th style="width:217.75pt;">Description</th>
+                    <th style="width:49.75pt;">Unit</th>
+                    <th style="width:59.75pt;">Price</th>
+                    <th style="width:64.75pt;">Amount</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach ($doc['items'] as $i => $item)
+                    <tr>
+                        <td class="c">{{ $i + 1 }}</td>
+                        <td>
+                            @foreach (collect([$item['item'], $item['desc']])->filter()->unique()->values() as $line)
+                                <div>{!! nl2br(e($line)) !!}</div>
+                            @endforeach
+                        </td>
+                        <td class="c">{{ rtrim(rtrim(number_format($item['qty'], 2, '.', ''), '0'), '.') }}</td>
+                        <td class="rt">RM {{ number_format($item['price'], 2) }}</td>
+                        <td class="rt">RM {{ number_format($item['amount'], 2) }}</td>
+                    </tr>
+                @endforeach
+            </tbody>
+        </table>
 
-    @include('documents.partials.footer', ['bank' => $bank, 'receiptNote' => 'This receipt confirms payment received for the above job/invoice.'])
+        <table class="tot">
+            <tr><td>Subtotal</td><td class="v">RM {{ number_format($doc['subtotal'], 2) }}</td></tr>
+            <tr><td>Delivery</td><td class="v">RM {{ number_format($doc['delivery'], 2) }}</td></tr>
+            <tr><td>Discount</td><td class="v">(RM {{ number_format($doc['discount'], 2) }})</td></tr>
+            <tr class="grand"><td>Total (MYR)</td><td class="v">RM {{ number_format($doc['total'], 2) }}</td></tr>
+        </table>
+    @endif
+
+    @include('documents.partials.footer', ['notes' => $doc['notes']])
 </body>
 </html>

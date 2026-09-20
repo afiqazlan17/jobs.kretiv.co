@@ -7,6 +7,7 @@ use App\Models\Job;
 use App\Models\JobDocument;
 use App\Models\LedgerEntry;
 use App\Models\User;
+use App\Support\DocumentData;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
@@ -26,13 +27,18 @@ class DocumentControllerTest extends TestCase
         ]);
     }
 
+    private function generate(User $user, Job $job, string $type, array $payload = [])
+    {
+        return $this->actingAs($user)->postJson(route('jobs.documents.generate', [$job, $type]), array_merge(['title' => $job->job_type], $payload));
+    }
+
     public function test_generating_an_invoice_downloads_a_pdf_and_posts_a_ledger_entry(): void
     {
         Storage::fake('public');
         $bod = User::factory()->create(['role' => User::ROLE_BOD]);
         $job = $this->job();
 
-        $response = $this->actingAs($bod)->get(route('jobs.invoice', $job));
+        $response = $this->generate($bod, $job, 'invoice');
 
         $response->assertOk();
         $response->assertHeader('content-type', 'application/pdf');
@@ -41,13 +47,28 @@ class DocumentControllerTest extends TestCase
         $this->assertDatabaseHas('job_documents', ['job_id' => $job->id, 'doc_type' => 'invoice']);
     }
 
+    public function test_invoice_total_includes_delivery_and_discount(): void
+    {
+        Storage::fake('public');
+        $bod = User::factory()->create(['role' => User::ROLE_BOD]);
+        $job = $this->job();
+
+        $this->generate($bod, $job, 'invoice', [
+            'items' => [['item' => 'Banner', 'desc' => '', 'qty' => 2, 'price' => 50]],
+            'delivery' => 10,
+            'discount' => 5,
+        ])->assertOk();
+
+        $this->assertDatabaseHas('ledger_entries', ['type' => 'invoice', 'amount' => 105]);
+    }
+
     public function test_generating_a_quotation_does_not_post_a_ledger_entry(): void
     {
         Storage::fake('public');
         $bod = User::factory()->create(['role' => User::ROLE_BOD]);
         $job = $this->job();
 
-        $response = $this->actingAs($bod)->get(route('jobs.quotation', $job));
+        $response = $this->generate($bod, $job, 'quotation');
 
         $response->assertOk();
         $response->assertHeader('content-type', 'application/pdf');
@@ -61,11 +82,130 @@ class DocumentControllerTest extends TestCase
         $bod = User::factory()->create(['role' => User::ROLE_BOD]);
         $job = $this->job();
 
-        $response = $this->actingAs($bod)->get(route('jobs.proforma', $job));
+        $this->generate($bod, $job, 'proforma')->assertOk();
 
-        $response->assertOk();
         $this->assertSame(0, LedgerEntry::count());
         $this->assertDatabaseHas('job_documents', ['job_id' => $job->id, 'doc_type' => 'proforma']);
+    }
+
+    public function test_documents_are_blocked_until_the_job_is_claimed(): void
+    {
+        Storage::fake('public');
+        $bod = User::factory()->create(['role' => User::ROLE_BOD]);
+        $job = $this->job();
+        $job->update(['status' => Job::STATUS_POTENTIAL]);
+
+        foreach (['quotation', 'proforma', 'invoice', 'receipt'] as $type) {
+            $this->generate($bod, $job, $type)->assertStatus(422);
+        }
+
+        $this->assertSame(0, JobDocument::count());
+        $this->actingAs($bod)->getJson(route('jobs.documents.draft', [$job, 'quotation']))->assertStatus(422);
+    }
+
+    public function test_a_receipt_needs_an_existing_invoice(): void
+    {
+        Storage::fake('public');
+        $bod = User::factory()->create(['role' => User::ROLE_BOD]);
+        $job = $this->job();
+
+        $this->generate($bod, $job, 'receipt')->assertStatus(422);
+
+        $this->assertSame(0, JobDocument::where('doc_type', 'receipt')->count());
+        $this->assertSame(0, LedgerEntry::count());
+    }
+
+    public function test_a_receipt_can_record_a_partial_payment_against_the_invoice(): void
+    {
+        Storage::fake('public');
+        $bod = User::factory()->create(['role' => User::ROLE_BOD]);
+        $job = $this->job();
+        $this->generate($bod, $job, 'invoice')->assertOk();
+
+        $this->generate($bod, $job, 'receipt', ['amount_paid' => 400, 'payment_method' => 'Cash'])->assertOk();
+
+        $this->assertDatabaseHas('ledger_entries', ['type' => 'receipt', 'amount' => 400, 'reversed' => false]);
+    }
+
+    public function test_a_receipt_cannot_exceed_the_invoice_total(): void
+    {
+        Storage::fake('public');
+        $bod = User::factory()->create(['role' => User::ROLE_BOD]);
+        $job = $this->job();
+        $this->generate($bod, $job, 'invoice')->assertOk();
+
+        $this->generate($bod, $job, 'receipt', ['amount_paid' => 1500])->assertStatus(422);
+
+        $this->assertSame(0, LedgerEntry::where('type', 'receipt')->count());
+    }
+
+    public function test_the_draft_hands_the_modal_its_defaults_and_the_invoice_to_pay_against(): void
+    {
+        Storage::fake('public');
+        $bod = User::factory()->create(['role' => User::ROLE_BOD]);
+        $job = $this->job();
+        $this->generate($bod, $job, 'invoice')->assertOk();
+
+        $draft = $this->actingAs($bod)->getJson(route('jobs.documents.draft', [$job, 'receipt']))->assertOk()->json();
+
+        $this->assertSame('RC-'.now()->year.'-001', $draft['doc_number']);
+        $this->assertSame('INV-'.now()->year.'-001', $draft['invoice_number']);
+        $this->assertEquals(1000, $draft['invoice_total']);
+        $this->assertEquals(1000, $draft['defaults']['amount_paid']);
+        $this->assertSame('Banner', $draft['defaults']['title']);
+        $this->assertSame($bod->name, $draft['defaults']['by_staff']);
+    }
+
+    public function test_previewing_renders_a_pdf_without_storing_or_posting_anything(): void
+    {
+        Storage::fake('public');
+        $bod = User::factory()->create(['role' => User::ROLE_BOD]);
+        $job = $this->job();
+
+        $response = $this->actingAs($bod)->postJson(route('jobs.documents.preview', [$job, 'invoice']), ['title' => 'Banner']);
+
+        $response->assertOk();
+        $response->assertHeader('content-type', 'application/pdf');
+        $this->assertSame(0, JobDocument::count());
+        $this->assertSame(0, LedgerEntry::count());
+    }
+
+    public function test_saving_writes_items_delivery_and_discount_back_to_the_job(): void
+    {
+        $bod = User::factory()->create(['role' => User::ROLE_BOD]);
+        $job = $this->job();
+
+        $this->actingAs($bod)->postJson(route('jobs.documents.save', [$job, 'quotation']), [
+            'title' => 'Big Banner',
+            'items' => [['item' => 'Banner', 'desc' => '3x6ft', 'qty' => 2, 'price' => 100]],
+            'delivery' => 20,
+            'discount' => 10,
+        ])->assertOk();
+
+        $job->refresh();
+        $this->assertSame('Big Banner', $job->job_type);
+        $this->assertEquals(210, $job->estimation_value);
+        $this->assertEquals(20, $job->delivery_amount);
+        $this->assertEquals(10, $job->discount_amount);
+        $this->assertSame('3x6ft', $job->line_items[0]['desc']);
+        $this->assertDatabaseHas('activity_log', ['job_id' => $job->id, 'field_changed' => 'estimation_value', 'new_value' => '210.00']);
+    }
+
+    public function test_note_wording_differs_by_document_type(): void
+    {
+        $bank = config('kretivco.bank_details.mbb');
+
+        $quotation = implode("\n", DocumentData::defaultNotes('quotation', $bank));
+        $invoice = implode("\n", DocumentData::defaultNotes('invoice', $bank));
+        $receipt = implode("\n", DocumentData::defaultNotes('receipt', $bank));
+
+        $this->assertStringContainsString('80% deposit', $quotation);
+        $this->assertStringContainsString('Payment due within 7 days from the invoice date.', $invoice);
+        $this->assertStringContainsString('surcharge as agreed in the service agreement', $invoice);
+        $this->assertStringNotContainsString('80% deposit', $invoice);
+        $this->assertSame($invoice, implode("\n", DocumentData::defaultNotes('proforma', $bank)));
+        $this->assertStringContainsString('Please retain this receipt for your reference.', $receipt);
+        $this->assertStringNotContainsString('Please make payment to', $receipt);
     }
 
     public function test_a_generated_document_can_be_re_downloaded_from_its_history(): void
@@ -74,7 +214,7 @@ class DocumentControllerTest extends TestCase
         $bod = User::factory()->create(['role' => User::ROLE_BOD]);
         $job = $this->job();
 
-        $this->actingAs($bod)->get(route('jobs.quotation', $job));
+        $this->generate($bod, $job, 'quotation');
         $document = JobDocument::first();
 
         $response = $this->actingAs($bod)->get(route('jobs.documents.show', [$job, $document]));
@@ -89,8 +229,8 @@ class DocumentControllerTest extends TestCase
         $bod = User::factory()->create(['role' => User::ROLE_BOD]);
         $job = $this->job();
 
-        $this->actingAs($bod)->get(route('jobs.quotation', $job));
-        $this->actingAs($bod)->get(route('jobs.quotation', $job));
+        $this->generate($bod, $job, 'quotation');
+        $this->generate($bod, $job, 'quotation');
 
         $this->assertSame(2, JobDocument::where('job_id', $job->id)->where('doc_type', 'quotation')->count());
     }
