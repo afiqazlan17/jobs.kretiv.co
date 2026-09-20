@@ -42,8 +42,9 @@
                             <div class="mt-1 space-y-2">
                                 <template x-for="(row, idx) in form.items" :key="idx">
                                     <div class="rounded-lg border border-gray-200 p-3 space-y-2">
-                                        <div><label class="text-[11px] text-gray-400">Item Name</label>
-                                            <textarea rows="2" x-model="row.item" class="block w-full rounded-md border-gray-300 shadow-sm text-sm"></textarea></div>
+                                        <div class="relative" x-data="itemCombo('{{ route('items.search') }}', '{{ $job->department }}', 'doc')" @click.outside="open = false"><label class="text-[11px] text-gray-400">Item Name — search the library or type your own</label>
+                                            <textarea rows="2" x-model="row.item" autocomplete="off" @focus="search(row.item)" @input="search(row.item)" @keydown.escape.stop="open = false" class="block w-full rounded-md border-gray-300 shadow-sm text-sm"></textarea>
+                                            <x-item-dropdown /></div>
                                         <div><label class="text-[11px] text-gray-400">Description</label>
                                             <textarea rows="2" x-model="row.desc" class="block w-full rounded-md border-gray-300 shadow-sm text-sm"></textarea></div>
                                         <div class="flex items-end gap-2">

@@ -52,4 +52,34 @@ window.lineItemsForm = function (initialRows) {
     };
 };
 
+// Line-item typeahead backed by the Items library. `mode` decides what a pick
+// fills in: 'create' (New Job rows: desc/price) or 'doc' (document modal rows:
+// item/desc/price). Free typing still works for one-off items.
+Alpine.data('itemCombo', (url, dept, mode) => ({
+    open: false, results: [], loading: false, timer: null, seq: 0,
+    search(q) {
+        this.open = true;
+        clearTimeout(this.timer);
+        this.timer = setTimeout(async () => {
+            const mine = ++this.seq;
+            this.loading = true;
+            try {
+                const res = await fetch(`${url}?q=${encodeURIComponent((q || '').trim())}&dept=${encodeURIComponent(dept)}`, { headers: { Accept: 'application/json' } });
+                if (mine === this.seq && res.ok) this.results = await res.json();
+            } catch (e) { /* dropdown just stays as it was */ }
+            if (mine === this.seq) this.loading = false;
+        }, 200);
+    },
+    pick(row, r) {
+        if (mode === 'doc') {
+            row.item = r.name;
+            row.desc = r.description || '';
+        } else {
+            row.desc = r.name;
+        }
+        if (r.price !== null) row.price = r.price;
+        this.open = false;
+    },
+}));
+
 Alpine.start();

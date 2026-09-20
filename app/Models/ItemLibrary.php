@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-#[Fillable(['department', 'item_name', 'description', 'usage_count', 'created_by'])]
+#[Fillable(['department', 'item_name', 'description', 'price', 'usage_count', 'active', 'created_by'])]
 class ItemLibrary extends Model
 {
     protected $table = 'item_library';
@@ -17,6 +17,8 @@ class ItemLibrary extends Model
     {
         return [
             'created_at' => 'datetime',
+            'price' => 'decimal:2',
+            'active' => 'boolean',
         ];
     }
 

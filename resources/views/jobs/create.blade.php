@@ -178,7 +178,11 @@
                                 <div class="mt-1 space-y-1.5">
                                     <template x-for="(row, idx) in perDept.{{ $key }}.lineItems" :key="idx">
                                         <div class="grid grid-cols-12 gap-1.5 items-center">
-                                            <input type="text" :name="`per_dept[{{ $key }}][line_items][${idx}][desc]`" x-model="row.desc" :disabled="!depts.includes('{{ $key }}')" placeholder="Description" class="col-span-7 rounded-md border-gray-300 shadow-sm text-xs">
+                                            <div class="col-span-7 relative" x-data="itemCombo('{{ route('items.search') }}', '{{ $key }}', 'create')" @click.outside="open = false">
+                                                <input type="text" :name="`per_dept[{{ $key }}][line_items][${idx}][desc]`" x-model="row.desc" :disabled="!depts.includes('{{ $key }}')" placeholder="Search or type an item…" autocomplete="off"
+                                                       @focus="search(row.desc)" @input="search(row.desc)" @keydown.escape="open = false" class="block w-full rounded-md border-gray-300 shadow-sm text-xs">
+                                                <x-item-dropdown />
+                                            </div>
                                             <input type="number" step="1" min="0" :name="`per_dept[{{ $key }}][line_items][${idx}][qty]`" x-model="row.qty" :disabled="!depts.includes('{{ $key }}')" placeholder="Unit" class="col-span-2 rounded-md border-gray-300 shadow-sm text-xs">
                                             <input type="number" step="0.01" min="0" :name="`per_dept[{{ $key }}][line_items][${idx}][price]`" x-model="row.price" :disabled="!depts.includes('{{ $key }}')" placeholder="Price" class="col-span-2 rounded-md border-gray-300 shadow-sm text-xs">
                                             <button type="button" @click="perDept.{{ $key }}.lineItems.splice(idx, 1)" class="col-span-1 text-red-500 text-xs">✕</button>

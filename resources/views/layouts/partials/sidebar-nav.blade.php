@@ -5,6 +5,7 @@
         ['key' => 'jobs', 'label' => 'Job', 'route' => 'jobs.index', 'pattern' => 'jobs.*', 'icon' => '📋'],
         ['key' => 'customers', 'label' => 'Customers', 'route' => 'customers.index', 'icon' => '👥'],
         ['key' => 'vendors', 'label' => 'Vendors', 'route' => 'vendors.index', 'icon' => '🏭'],
+        ['key' => 'items', 'label' => 'Items', 'route' => 'items.index', 'pattern' => 'items.*', 'icon' => '📦'],
         ['key' => 'finance', 'label' => 'Finance', 'route' => 'finance.index', 'pattern' => 'finance.*', 'icon' => '💰', 'roles' => ['bod', 'dept_head']],
         ['key' => 'reports', 'label' => 'Reports', 'route' => 'reports.index', 'icon' => '📈', 'roles' => ['bod', 'dept_head']],
         ['key' => 'departments', 'label' => 'Departments', 'route' => 'departments.index', 'icon' => '🏢'],

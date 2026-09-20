@@ -7,6 +7,7 @@ use App\Http\Controllers\DepartmentController;
 use App\Http\Controllers\DocumentController;
 use App\Http\Controllers\FinanceController;
 use App\Http\Controllers\FinanceReportController;
+use App\Http\Controllers\ItemLibraryController;
 use App\Http\Controllers\JobController;
 use App\Http\Controllers\JobVendorCostController;
 use App\Http\Controllers\LeadController;
@@ -41,6 +42,12 @@ Route::middleware('auth')->group(function () {
     Route::get('/vendors', [VendorController::class, 'index'])->name('vendors.index');
     Route::post('/vendors', [VendorController::class, 'store'])->name('vendors.store');
     Route::put('/vendors/{vendor}', [VendorController::class, 'update'])->name('vendors.update');
+
+    Route::get('/items', [ItemLibraryController::class, 'index'])->name('items.index');
+    Route::get('/items/search', [ItemLibraryController::class, 'search'])->name('items.search');
+    Route::post('/items', [ItemLibraryController::class, 'store'])->name('items.store');
+    Route::put('/items/{item}', [ItemLibraryController::class, 'update'])->name('items.update');
+    Route::delete('/items/{item}', [ItemLibraryController::class, 'destroy'])->name('items.destroy');
 
     Route::get('/jobs', [JobController::class, 'index'])->name('jobs.index');
     Route::get('/jobs/create', [JobController::class, 'create'])->name('jobs.create');
