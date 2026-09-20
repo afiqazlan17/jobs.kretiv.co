@@ -227,7 +227,7 @@
                 perDept: Object.fromEntries(departmentKeys.map(k => [k, {
                     jobTypeCategory: 'client_project', productLine: '', segment: '', pkg: '', jobType: '', lineItems: [],
                 }])),
-                customerId: '{{ old('customer_id') }}',
+                customerId: '{{ old('customer_id', request('customer_id')) }}',
                 customerQuery: '',
                 customerOpen: false,
                 showInlineCustomer: false,

@@ -45,7 +45,7 @@
                 <div>
                     <h2 class="font-bold text-2xl text-white leading-tight">{{ $job->job_id }} | {{ $job->job_type }}</h2>
                     @if ($job->customer)
-                        <a href="{{ route('customers.index', ['q' => $job->customer->customer_id]) }}" class="block text-sm text-white/90 hover:underline mt-1">{{ $job->customer->customer_id }} | {{ $job->customer->company ?: $job->customer->name }}</a>
+                        <a href="{{ route('customers.index', ['q' => $job->customer->customer_id, 'open' => $job->customer->id]) }}" class="block text-sm text-white/90 hover:underline mt-1">{{ $job->customer->customer_id }} | {{ $job->customer->company ?: $job->customer->name }}</a>
                         <div class="text-sm text-white/70">{{ $job->customer->name }}@if ($job->customer->phone) | {{ $job->customer->phone }} @endif</div>
                         @if ($job->customer->email)
                             <div class="text-sm text-white/70">{{ $job->customer->email }}</div>

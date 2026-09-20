@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Customer;
+use App\Models\Job;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -14,7 +15,7 @@ class CustomerController extends Controller
     {
         $this->authorize('viewAny', Customer::class);
 
-        $query = Customer::query()->orderByDesc('created_at');
+        $query = Customer::query()->with('jobs')->orderByDesc('created_at');
 
         if ($search = $request->query('q')) {
             $query->where(function ($q) use ($search) {
@@ -24,9 +25,42 @@ class CustomerController extends Controller
             });
         }
 
+        if ($source = $request->query('source')) {
+            $query->where('source', $source);
+        }
+
+        $user = $request->user();
+        $visible = $user->isBod() ? null : $user->visibleDepartments();
+
+        $customers = $query->get()->each(function (Customer $customer) use ($visible) {
+            $jobs = $customer->jobs
+                ->where('archived', false)
+                ->when($visible !== null, fn ($jobs) => $jobs->whereIn('department', $visible))
+                ->sortByDesc('id')->values();
+            $counted = $jobs->where('status', '!=', Job::STATUS_CANCELLED);
+            $completed = $jobs->where('status', Job::STATUS_COMPLETED);
+            $open = $jobs->whereIn('status', [Job::STATUS_POTENTIAL, Job::STATUS_IN_PROGRESS]);
+
+            $customer->job_history = $jobs;
+            $customer->stats = [
+                'jobs' => $counted->count(),
+                'value' => (float) $counted->sum('estimation_value'),
+                'revenue' => (float) $completed->sum('final_value'),
+                'completed' => $completed->count(),
+                'pipeline' => (float) $open->sum('estimation_value'),
+                'active' => $open->count(),
+                'by_department' => $counted->groupBy('department')->map(fn ($group) => [
+                    'jobs' => $group->count(),
+                    'value' => (float) $group->sum('estimation_value'),
+                ]),
+            ];
+        });
+
         return view('customers.index', [
-            'customers' => $query->get(),
+            'customers' => $customers,
             'search' => $search ?? '',
+            'source' => $source ?? '',
+            'totalRevenue' => $customers->sum(fn (Customer $c) => $c->stats['revenue']),
         ]);
     }
 
