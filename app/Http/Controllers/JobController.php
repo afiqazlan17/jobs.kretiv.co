@@ -173,7 +173,6 @@ class JobController extends Controller
             'per_dept.*.discount_amount' => ['nullable', 'numeric', 'min:0'],
             'per_dept.*.line_items' => ['nullable', 'array'],
             'per_dept.*.line_items.*.desc' => ['nullable', 'string', 'max:1000'],
-            'per_dept.*.line_items.*.size' => ['nullable', 'string', 'max:255'],
             'per_dept.*.line_items.*.qty' => ['nullable', 'numeric', 'min:0'],
             'per_dept.*.line_items.*.price' => ['nullable', 'numeric', 'min:0'],
         ]);
@@ -334,7 +333,6 @@ class JobController extends Controller
             ->map(fn ($row) => [
                 'item' => trim($row['desc']),
                 'desc' => trim($row['desc']),
-                'size' => trim($row['size'] ?? ''),
                 'qty' => (float) ($row['qty'] ?? 1),
                 'price' => (float) ($row['price'] ?? 0),
             ])
@@ -408,7 +406,6 @@ class JobController extends Controller
             'discount_amount' => ['nullable', 'numeric', 'min:0'],
             'line_items' => ['nullable', 'array'],
             'line_items.*.desc' => ['nullable', 'string', 'max:1000'],
-            'line_items.*.size' => ['nullable', 'string', 'max:255'],
             'line_items.*.qty' => ['nullable', 'numeric', 'min:0'],
             'line_items.*.price' => ['nullable', 'numeric', 'min:0'],
         ]);

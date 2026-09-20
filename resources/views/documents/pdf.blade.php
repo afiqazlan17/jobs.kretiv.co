@@ -70,7 +70,9 @@
 
         <table class="tot">
             <tr><td>Subtotal</td><td class="v">RM {{ number_format($doc['subtotal'], 2) }}</td></tr>
-            <tr><td>Delivery</td><td class="v">RM {{ number_format($doc['delivery'], 2) }}</td></tr>
+            @if ($doc['delivery'] > 0)
+                <tr><td>Delivery</td><td class="v">RM {{ number_format($doc['delivery'], 2) }}</td></tr>
+            @endif
             @if ($doc['discount'] > 0)
                 <tr><td>Discount</td><td class="v">(RM {{ number_format($doc['discount'], 2) }})</td></tr>
             @endif

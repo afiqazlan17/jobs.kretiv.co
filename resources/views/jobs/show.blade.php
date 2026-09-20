@@ -479,7 +479,7 @@
 
                 @can('update', $job)
                 <div class="bg-white shadow-sm sm:rounded-lg p-6"
-                     x-data="lineItemsForm({{ collect($job->line_items ?? [])->map(fn ($i) => ['desc' => $i['desc'] ?? '', 'size' => $i['size'] ?? '', 'qty' => $i['qty'] ?? 1, 'price' => $i['price'] ?? 0])->toJson() }})">
+                     x-data="lineItemsForm({{ collect($job->line_items ?? [])->map(fn ($i) => ['desc' => $i['desc'] ?? '', 'qty' => $i['qty'] ?? 1, 'price' => $i['price'] ?? 0])->toJson() }})">
                     <h3 class="text-sm font-semibold text-gray-500 uppercase mb-4">Line Items — shown on Quotation/Proforma PDF</h3>
                     <form method="POST" action="{{ route('jobs.line-items.update', $job) }}">
                         @csrf
@@ -488,13 +488,12 @@
                             <template x-for="(row, idx) in rows" :key="idx">
                                 <div class="grid grid-cols-12 gap-1.5 items-center">
                                     <input type="text" :name="`line_items[${idx}][desc]`" x-model="row.desc" placeholder="Description" class="col-span-5 rounded-md border-gray-300 shadow-sm text-xs">
-                                    <input type="text" :name="`line_items[${idx}][size]`" x-model="row.size" placeholder="Size" class="col-span-2 rounded-md border-gray-300 shadow-sm text-xs">
                                     <input type="number" step="1" min="0" :name="`line_items[${idx}][qty]`" x-model="row.qty" placeholder="Unit" class="col-span-2 rounded-md border-gray-300 shadow-sm text-xs">
                                     <input type="number" step="0.01" min="0" :name="`line_items[${idx}][price]`" x-model="row.price" placeholder="Price" class="col-span-2 rounded-md border-gray-300 shadow-sm text-xs">
                                     <button type="button" @click="rows.splice(idx, 1)" class="col-span-1 text-red-500 text-xs">✕</button>
                                 </div>
                             </template>
-                            <button type="button" @click="rows.push({ desc: '', size: '', qty: 1, price: 0 })" class="text-xs font-semibold text-indigo-600 hover:underline">+ Add Line Item</button>
+                            <button type="button" @click="rows.push({ desc: '', qty: 1, price: 0 })" class="text-xs font-semibold text-indigo-600 hover:underline">+ Add Line Item</button>
                         </div>
                         <div class="grid grid-cols-2 gap-3 mt-3">
                             <div>

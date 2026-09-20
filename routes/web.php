@@ -45,6 +45,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/jobs', [JobController::class, 'index'])->name('jobs.index');
     Route::get('/jobs/create', [JobController::class, 'create'])->name('jobs.create');
     Route::post('/jobs', [JobController::class, 'store'])->name('jobs.store');
+    Route::post('/jobs/quotation-preview', [DocumentController::class, 'previewNewJob'])->name('jobs.quotation-preview');
     Route::get('/jobs/{job}', [JobController::class, 'show'])->name('jobs.show');
     Route::put('/jobs/{job}', [JobController::class, 'update'])->name('jobs.update');
     Route::put('/jobs/{job}/line-items', [JobController::class, 'updateLineItems'])->name('jobs.line-items.update');

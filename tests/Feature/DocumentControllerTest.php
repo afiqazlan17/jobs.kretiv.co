@@ -319,6 +319,7 @@ class DocumentControllerTest extends TestCase
         $none = $this->actingAs($bod)->post(route('jobs.documents.preview', [$job, 'quotation']), $payload + ['discount' => 0]);
         $some = $this->actingAs($bod)->post(route('jobs.documents.preview', [$job, 'quotation']), $payload + ['discount' => 10]);
 
+        $this->assertStringNotContainsString('Delivery', $this->pdfText($none->getContent()));
         $this->assertStringNotContainsString('Discount', $this->pdfText($none->getContent()));
         $this->assertStringContainsString('Discount', $this->pdfText($some->getContent()));
     }
@@ -331,5 +332,20 @@ class DocumentControllerTest extends TestCase
         unlink($file);
 
         return $text;
+    }
+
+    public function test_new_job_form_can_preview_a_quotation_before_the_job_exists(): void
+    {
+        $bod = User::factory()->create(['role' => User::ROLE_BOD]);
+        $customer = Customer::create(['customer_id' => 'C009', 'name' => 'Preview Person', 'company' => 'Preview Sdn Bhd']);
+
+        $response = $this->actingAs($bod)->postJson(route('jobs.quotation-preview'), [
+            'customer_id' => $customer->id, 'bank' => 'affin', 'title' => 'Kad Kahwin',
+            'items' => [['item' => 'Kad Kahwin', 'qty' => 2, 'price' => 50]],
+        ]);
+
+        $response->assertOk();
+        $this->assertSame('application/pdf', $response->headers->get('Content-Type'));
+        $this->assertSame(0, Job::count());
     }
 }

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\ActivityLog;
+use App\Models\Customer;
 use App\Models\Job;
 use App\Models\JobDocument;
 use App\Models\LedgerEntry;
@@ -48,6 +49,52 @@ class DocumentController extends Controller
         $this->ensureAllowed($job, $type);
 
         $doc = $this->buildDoc($request, $job, $type);
+
+        return response(Pdf::loadView('documents.pdf', ['doc' => $doc])->output(), 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'inline; filename="preview.pdf"',
+        ]);
+    }
+
+    /**
+     * Quotation preview for the New Job form — nothing exists yet, so this
+     * renders from an unsaved Job with a placeholder number. Same template
+     * and defaults as the real Quotation, so what staff see while filling
+     * the form is what the job's Quotation will start from.
+     */
+    public function previewNewJob(Request $request): Response
+    {
+        $this->authorize('create', Job::class);
+
+        $data = $request->validate([
+            'customer_id' => ['nullable', 'integer', 'exists:customers,id'],
+            'bank' => ['nullable', Rule::in(['mbb', 'affin'])],
+            'title' => ['nullable', 'string', 'max:255'],
+            'estimation_value' => ['nullable', 'numeric', 'min:0'],
+            'delivery' => ['nullable', 'numeric', 'min:0'],
+            'discount' => ['nullable', 'numeric', 'min:0'],
+            'items' => ['nullable', 'array', 'max:50'],
+            'items.*.item' => ['nullable', 'string', 'max:1000'],
+            'items.*.desc' => ['nullable', 'string', 'max:2000'],
+            'items.*.qty' => ['nullable', 'numeric', 'min:0'],
+            'items.*.price' => ['nullable', 'numeric', 'min:0'],
+        ]);
+
+        $job = (new Job)->forceFill([
+            'job_id' => 'XX-'.now()->year.'-000',
+            'job_type' => $data['title'] ?? '',
+            'bank' => $data['bank'] ?? null,
+            'estimation_value' => $data['estimation_value'] ?? null,
+        ]);
+        $job->setRelation('customer', isset($data['customer_id']) ? Customer::find($data['customer_id']) : null);
+
+        $doc = DocumentData::build(
+            $job,
+            'quotation',
+            ['title' => $data['title'] ?? '', 'items' => $data['items'] ?? [], 'delivery' => $data['delivery'] ?? 0, 'discount' => $data['discount'] ?? 0],
+            'QT-'.now()->year.'-XXX',
+            $request->user()->name,
+        );
 
         return response(Pdf::loadView('documents.pdf', ['doc' => $doc])->output(), 200, [
             'Content-Type' => 'application/pdf',

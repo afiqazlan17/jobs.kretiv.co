@@ -9,7 +9,7 @@
              {{ json_encode(array_keys($departments)) }},
              {{ json_encode(config('kretivco.package_catalog')) }}
          )">
-        <div class="max-w-3xl mx-auto sm:px-6 lg:px-8">
+        <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 grid grid-cols-1 lg:grid-cols-[minmax(0,700px)_minmax(0,1fr)] gap-4 items-start">
             <div class="bg-white shadow-sm sm:rounded-lg p-6">
                 <form method="POST" action="{{ route('jobs.store') }}">
                     @csrf
@@ -94,7 +94,7 @@
                                 </div>
                                 <div>
                                     <x-input-label value="Bank" />
-                                    <select name="per_dept[{{ $key }}][bank]" :disabled="!depts.includes('{{ $key }}')" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm text-xs">
+                                    <select name="per_dept[{{ $key }}][bank]" x-model="perDept.{{ $key }}.bank" :disabled="!depts.includes('{{ $key }}')" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm text-xs">
                                         <option value="">—</option>
                                         @foreach (config('kretivco.banks') as $bKey => $b)
                                             <option value="{{ $bKey }}">{{ $b['label'] }}</option>
@@ -168,7 +168,7 @@
                                 </div>
                                 <div>
                                     <x-input-label value="Estimation Value (RM)" />
-                                    <input type="number" step="0.01" min="0" name="per_dept[{{ $key }}][estimation_value]" :disabled="!depts.includes('{{ $key }}')" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm text-xs">
+                                    <input type="number" step="0.01" min="0" name="per_dept[{{ $key }}][estimation_value]" x-model="perDept.{{ $key }}.estimation" :disabled="!depts.includes('{{ $key }}')" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm text-xs">
                                 </div>
                             </div>
 
@@ -178,25 +178,24 @@
                                 <div class="mt-1 space-y-1.5">
                                     <template x-for="(row, idx) in perDept.{{ $key }}.lineItems" :key="idx">
                                         <div class="grid grid-cols-12 gap-1.5 items-center">
-                                            <input type="text" :name="`per_dept[{{ $key }}][line_items][${idx}][desc]`" x-model="row.desc" :disabled="!depts.includes('{{ $key }}')" placeholder="Description" class="col-span-5 rounded-md border-gray-300 shadow-sm text-xs">
-                                            <input type="text" :name="`per_dept[{{ $key }}][line_items][${idx}][size]`" x-model="row.size" :disabled="!depts.includes('{{ $key }}')" placeholder="Size" class="col-span-2 rounded-md border-gray-300 shadow-sm text-xs">
+                                            <input type="text" :name="`per_dept[{{ $key }}][line_items][${idx}][desc]`" x-model="row.desc" :disabled="!depts.includes('{{ $key }}')" placeholder="Description" class="col-span-7 rounded-md border-gray-300 shadow-sm text-xs">
                                             <input type="number" step="1" min="0" :name="`per_dept[{{ $key }}][line_items][${idx}][qty]`" x-model="row.qty" :disabled="!depts.includes('{{ $key }}')" placeholder="Unit" class="col-span-2 rounded-md border-gray-300 shadow-sm text-xs">
                                             <input type="number" step="0.01" min="0" :name="`per_dept[{{ $key }}][line_items][${idx}][price]`" x-model="row.price" :disabled="!depts.includes('{{ $key }}')" placeholder="Price" class="col-span-2 rounded-md border-gray-300 shadow-sm text-xs">
                                             <button type="button" @click="perDept.{{ $key }}.lineItems.splice(idx, 1)" class="col-span-1 text-red-500 text-xs">✕</button>
                                         </div>
                                     </template>
-                                    <button type="button" @click="perDept.{{ $key }}.lineItems.push({ desc: '', size: '', qty: 1, price: 0 })" class="text-xs font-semibold text-indigo-600 hover:underline">+ Add Line Item</button>
+                                    <button type="button" @click="perDept.{{ $key }}.lineItems.push({ desc: '', qty: 1, price: 0 })" class="text-xs font-semibold text-indigo-600 hover:underline">+ Add Line Item</button>
                                 </div>
                             </div>
 
                             <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
                                 <div>
                                     <x-input-label value="Delivery (RM)" />
-                                    <input type="number" step="0.01" min="0" name="per_dept[{{ $key }}][delivery_amount]" :disabled="!depts.includes('{{ $key }}')" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm text-xs">
+                                    <input type="number" step="0.01" min="0" name="per_dept[{{ $key }}][delivery_amount]" x-model="perDept.{{ $key }}.delivery" :disabled="!depts.includes('{{ $key }}')" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm text-xs">
                                 </div>
                                 <div>
                                     <x-input-label value="Discount (RM)" />
-                                    <input type="number" step="0.01" min="0" name="per_dept[{{ $key }}][discount_amount]" :disabled="!depts.includes('{{ $key }}')" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm text-xs">
+                                    <input type="number" step="0.01" min="0" name="per_dept[{{ $key }}][discount_amount]" x-model="perDept.{{ $key }}.discount" :disabled="!depts.includes('{{ $key }}')" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm text-xs">
                                 </div>
                             </div>
 
@@ -214,6 +213,28 @@
                     </div>
                 </form>
             </div>
+
+            {{-- Live quotation preview — same PDF the job's Quotation button produces --}}
+            <div class="bg-white shadow-sm sm:rounded-lg overflow-hidden flex flex-col lg:sticky lg:top-4 h-[80vh] lg:h-[88vh]">
+                <div class="flex items-center justify-between gap-2 px-4 py-2.5 border-b border-gray-100">
+                    <h3 class="text-sm font-semibold text-gray-700">Quotation preview</h3>
+                    <div class="flex gap-1" x-show="depts.length > 1" x-cloak>
+                        <template x-for="d in depts" :key="d">
+                            <button type="button" @click="previewDept = d" class="text-[11px] font-semibold px-2 py-1 rounded border"
+                                    :class="activeDept === d ? 'bg-gray-800 text-white border-gray-800' : 'border-gray-200 text-gray-600'" x-text="d.toUpperCase()"></button>
+                        </template>
+                    </div>
+                </div>
+                <div class="relative flex-1 bg-gray-100 min-h-0">
+                    <p x-show="!depts.length" class="absolute inset-0 flex items-center justify-center text-sm text-gray-400 px-6 text-center">Select a department to see the quotation fill in as you type.</p>
+                    <template x-for="i in [0, 1]" :key="i">
+                        <iframe class="absolute inset-0 w-full h-full border-0 bg-white" :class="pvActive === i ? 'z-10' : 'z-0'" x-show="depts.length && pvSrc[pvActive]"
+                                :src="pvSrc[i] || 'about:blank'" @load="pvLoaded(i)"></iframe>
+                    </template>
+                    <div x-show="pvBusy" x-cloak class="absolute z-20 top-2 right-3 text-xs text-gray-500 bg-white/90 rounded px-2 py-1 shadow">Updating preview…</div>
+                    <div x-show="pvError" x-cloak class="absolute z-20 bottom-2 left-3 right-3 text-xs text-red-600 bg-white rounded px-2 py-1 shadow" x-text="pvError"></div>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -225,8 +246,9 @@
                 packageCatalog,
                 depts: {{ old('departments') ? json_encode(old('departments')) : '[]' }},
                 perDept: Object.fromEntries(departmentKeys.map(k => [k, {
-                    jobTypeCategory: 'client_project', productLine: '', segment: '', pkg: '', jobType: '', lineItems: [],
+                    jobTypeCategory: 'client_project', productLine: '', segment: '', pkg: '', jobType: '', lineItems: [], bank: '', estimation: '', delivery: '', discount: '',
                 }])),
+                previewDept: null, pvSrc: ['', ''], pvActive: 0, pvPending: null, pvBusy: false, pvError: '', pvTimer: null, pvSeq: 0,
                 customerId: '{{ old('customer_id', request('customer_id')) }}',
                 customerQuery: '',
                 customerOpen: false,
@@ -234,6 +256,55 @@
                 inlineCustomer: { name: '', company: '', phone: '', email: '', source: 'referral' },
                 inlineSaving: false,
                 inlineError: null,
+                init() {
+                    ['depts', 'perDept', 'customerId', 'previewDept'].forEach(k => this.$watch(k, () => this.schedulePreview()));
+                    this.schedulePreview();
+                },
+                get activeDept() {
+                    return this.depts.includes(this.previewDept) ? this.previewDept : (this.depts[0] || null);
+                },
+                previewPayload() {
+                    const d = this.activeDept, pd = this.perDept[d];
+                    const tier = pd.jobTypeCategory === 'product_sale' ? this.findPackageTier(d, pd.productLine, pd.segment, pd.pkg) : null;
+                    const items = tier
+                        ? [{ item: `${tier.pkg.label} (${tier.tier.pcs}pcs)`, desc: this.packageItemLines(d, pd.productLine, pd.segment, pd.pkg).join('\n'), qty: 1, price: tier.tier.price }]
+                        : pd.lineItems.filter(r => (r.desc || '').trim() !== '').map(r => ({ item: r.desc, desc: '', qty: r.qty === '' ? 0 : r.qty, price: r.price === '' ? 0 : r.price }));
+                    return {
+                        customer_id: this.customerId || null, bank: pd.bank || null, title: pd.jobType || '',
+                        estimation_value: tier ? tier.tier.price : (pd.estimation === '' ? null : pd.estimation),
+                        delivery: pd.delivery === '' ? 0 : pd.delivery, discount: pd.discount === '' ? 0 : pd.discount, items,
+                    };
+                },
+                schedulePreview() {
+                    clearTimeout(this.pvTimer);
+                    if (!this.activeDept) return;
+                    this.pvTimer = setTimeout(() => this.refreshPreview(), 400);
+                },
+                async refreshPreview() {
+                    const mine = ++this.pvSeq; this.pvBusy = true; this.pvError = '';
+                    let res;
+                    try {
+                        res = await fetch('{{ route('jobs.quotation-preview') }}', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content },
+                            body: JSON.stringify(this.previewPayload()),
+                        });
+                    } catch (e) { if (mine === this.pvSeq) { this.pvBusy = false; this.pvError = 'Preview unavailable.'; } return; }
+                    if (mine !== this.pvSeq) return;
+                    this.pvBusy = false;
+                    if (!res.ok) { try { const j = await res.json(); this.pvError = j.message || 'Preview unavailable.'; } catch (e) { this.pvError = 'Preview unavailable.'; } return; }
+                    const src = URL.createObjectURL(await res.blob()) + '#toolbar=0&navpanes=0&view=FitH';
+                    const t = this.pvPending ?? (1 - this.pvActive);
+                    if (this.pvSrc[t]) URL.revokeObjectURL(this.pvSrc[t].split('#')[0]);
+                    this.pvPending = t; this.pvSrc[t] = src;
+                },
+                pvLoaded(i) {
+                    if (this.pvPending !== i) return;
+                    const old = this.pvSrc[this.pvActive];
+                    this.pvActive = i; this.pvPending = null;
+                    if (old && old !== this.pvSrc[i]) URL.revokeObjectURL(old.split('#')[0]);
+                    this.pvSrc[1 - i] = '';
+                },
                 productLinesFor(dept) {
                     return this.packageCatalog[dept] || [];
                 },
