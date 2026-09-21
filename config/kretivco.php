@@ -52,11 +52,38 @@ return [
         ],
     ],
 
+    // Kretiv OS: one app, several modules. Each module can live on its own
+    // subdomain (set the *_HOST env vars); with none set the app runs on a
+    // single host exactly as before (local dev, tests).
+    'hosts' => [
+        'os' => env('OS_HOST'),
+        'jobs' => env('JOBS_HOST'),
+        'finance' => env('FINANCE_HOST'),
+        'hr' => env('HR_HOST'),
+    ],
+
+    'modules' => [
+        'jobs' => ['label' => 'Jobs', 'icon' => 'briefcase', 'desc' => 'Job queue, customers, quotations and invoices'],
+        'finance' => ['label' => 'Finance', 'icon' => 'coin', 'desc' => 'Ledger, vendor payments and reports'],
+        'hr' => ['label' => 'HR', 'icon' => 'users', 'desc' => 'Leave, announcements and payslips'],
+    ],
+
+    // What a user can open until BOD saves an explicit list for them.
+    // BOD always has every module.
+    'module_defaults' => [
+        'bod' => ['jobs', 'finance', 'hr'],
+        'dept_head' => ['jobs', 'finance', 'hr'],
+        'staff' => ['jobs', 'hr'],
+        'intern' => ['jobs', 'hr'],
+        'finance' => ['finance', 'hr'],
+    ],
+
     'roles' => [
         'bod' => ['label' => 'BOD', 'color' => '#E91E63', 'desc' => 'Full access — all departments, reports, settings'],
         'dept_head' => ['label' => 'Dept Head', 'color' => '#3A86FF', 'desc' => 'Own department(s) — jobs, reports'],
         'staff' => ['label' => 'Staff', 'color' => '#6B7280', 'desc' => 'Own department(s) — jobs, no reports/finance/settings'],
         'intern' => ['label' => 'Intern', 'color' => '#10B981', 'desc' => 'Own department(s) — same access as Staff'],
+        'finance' => ['label' => 'Finance', 'color' => '#8B5CF6', 'desc' => 'Finance module only — ledger and vendor payments'],
     ],
 
     'job_types' => [

@@ -1,0 +1,79 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Models\Job;
+use App\Models\User;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
+use Illuminate\View\View;
+
+// Kretiv OS — the signed-in entry point: launcher (what you can open and
+// what needs you today) and, for BOD, Users & Access.
+class OsController extends Controller
+{
+    public function home(Request $request): View
+    {
+        $user = $request->user();
+
+        $visible = Job::query()->where('archived', false)
+            ->when(! $user->isBod(), fn ($q) => $q->whereIn('department', $user->visibleDepartments()));
+
+        $myJobs = collect();
+        $queueCount = 0;
+        if ($user->canAccess('jobs')) {
+            $myJobs = (clone $visible)->with('customer')
+                ->where('pic', $user->name)
+                ->where('status', Job::STATUS_IN_PROGRESS)
+                ->orderByRaw('deadline is null')
+                ->orderBy('deadline')
+                ->get();
+            $queueCount = (clone $visible)->where('status', Job::STATUS_POTENTIAL)->whereNull('pic')->count();
+        }
+
+        $today = now()->startOfDay();
+        $due = $myJobs->filter(fn (Job $j) => $j->deadline && $j->deadline->startOfDay()->lte($today));
+
+        return view('os.home', [
+            'myJobs' => $myJobs,
+            'queueCount' => $queueCount,
+            'dueJobs' => $due,
+            'today' => $today,
+        ]);
+    }
+
+    /** BOD-only: who can open which module, and their role / active state. */
+    public function access(Request $request): View
+    {
+        abort_unless($request->user()->isBod(), 403);
+
+        $order = array_flip(array_keys(config('kretivco.roles')));
+        $users = User::orderBy('name')->get()->sortBy(fn (User $u) => $order[$u->role] ?? 99)->values();
+
+        return view('os.access', ['users' => $users]);
+    }
+
+    public function updateAccess(Request $request, User $user): RedirectResponse
+    {
+        abort_unless($request->user()->isBod(), 403);
+
+        $data = $request->validate([
+            'role' => ['required', 'in:'.implode(',', array_keys(config('kretivco.roles')))],
+            'modules' => ['nullable', 'array'],
+            'modules.*' => ['in:'.implode(',', User::MODULES)],
+        ]);
+
+        // BOD can't lock themselves out or demote the last way in.
+        if ($user->is($request->user())) {
+            $data['role'] = $user->role;
+        }
+
+        $user->update([
+            'role' => $data['role'],
+            'modules' => array_values($data['modules'] ?? []),
+            'active' => $user->is($request->user()) ? true : $request->boolean('active'),
+        ]);
+
+        return back()->with('success', "{$user->name} updated.");
+    }
+}

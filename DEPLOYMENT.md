@@ -139,3 +139,32 @@ padam job tu).
    dan upload/extract macam vendor/ di atas.
 6. **Blade view (.blade.php) yang berubah tanpa kelas Tailwind baru** —
    biasanya auto-refresh sendiri, tak perlu apa-apa command tambahan.
+
+## Kretiv OS domains (os.kretiv.co + jobs.kretiv.co)
+
+One codebase serves every module; the host decides which module answers.
+**Until the `*_HOST` vars are set the app behaves as one site**: login at
+`/login`, launcher at `/os`. So it is safe to deploy the code first and switch
+the domains on afterwards.
+
+1. **cPanel → Domains**: add subdomain `os.kretiv.co` with the *same* document
+   root as jobs (`repositories/jobs.kretiv.co/public`).
+2. **Cloudflare DNS**: add `os` (same target as `jobs`). Wait for SSL/AutoSSL.
+3. **`.env` on the server**, then nothing else to run (never `config:cache`):
+
+   ```
+   OS_HOST=os.kretiv.co
+   JOBS_HOST=jobs.kretiv.co
+   SESSION_DOMAIN=.kretiv.co
+   SESSION_SECURE_COOKIE=true
+   ```
+
+4. Run the one-off migrate cron (adds `users.modules`), then delete the cron.
+5. Everyone is signed out once; they sign in at `os.kretiv.co` and land on the
+   launcher. Opening any `jobs.` URL while signed out redirects to OS login and
+   back. `jobs.kretiv.co/login` no longer exists (404) once `OS_HOST` is set.
+
+Local testing of the domain mode: use `lvh.me` (resolves to 127.0.0.1) — e.g.
+`OS_HOST=os.lvh.me JOBS_HOST=jobs.lvh.me SESSION_DOMAIN=.lvh.me php artisan
+serve --port=8001`. (`*.localhost` cookies can't be shared across subdomains.)
+

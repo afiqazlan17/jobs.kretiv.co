@@ -6,7 +6,7 @@
         ['key' => 'customers', 'label' => 'Customers', 'route' => 'customers.index', 'icon' => '👥'],
         ['key' => 'vendors', 'label' => 'Vendors', 'route' => 'vendors.index', 'icon' => '🏭'],
         ['key' => 'items', 'label' => 'Items', 'route' => 'items.index', 'pattern' => 'items.*', 'icon' => '📦'],
-        ['key' => 'finance', 'label' => 'Finance', 'route' => 'finance.index', 'pattern' => 'finance.*', 'icon' => '💰', 'roles' => ['bod', 'dept_head']],
+        ['key' => 'finance', 'label' => 'Finance', 'route' => 'finance.index', 'pattern' => 'finance.*', 'icon' => '💰', 'roles' => ['bod', 'dept_head', 'finance']],
         ['key' => 'reports', 'label' => 'Reports', 'route' => 'reports.index', 'icon' => '📈', 'roles' => ['bod', 'dept_head']],
         ['key' => 'departments', 'label' => 'Departments', 'route' => 'departments.index', 'icon' => '🏢'],
         ['key' => 'settings', 'label' => 'Settings', 'route' => 'settings.index', 'icon' => '⚙️', 'roles' => ['bod']],
@@ -22,6 +22,14 @@
         </div>
     </div>
     <button @click="mobileOpen = false" class="md:hidden text-white/50 text-2xl leading-none">×</button>
+</div>
+
+{{-- Kretiv OS module switcher --}}
+<div class="flex flex-wrap gap-1 px-4 py-3 border-b border-white/[.06] text-[11px]">
+    <a href="{{ route('os.home') }}" class="px-2.5 py-1 rounded bg-white/10 text-white/80 hover:text-white">← Kretiv OS</a>
+    @if ($user->canAccess('finance'))
+        <a href="{{ route('finance.index') }}" class="px-2.5 py-1 rounded text-white/50 hover:text-white">Finance</a>
+    @endif
 </div>
 
 {{-- Navigation --}}

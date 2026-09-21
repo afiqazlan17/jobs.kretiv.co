@@ -29,7 +29,7 @@ class FinanceReportController extends Controller
     public function show(Request $request, string $report): View
     {
         $user = $request->user();
-        abort_unless($user->isBod() || $user->isDeptHead(), 403);
+        abort_unless($user->canManageFinance(), 403);
         abort_unless(array_key_exists($report, self::REPORTS), 404);
 
         $reports = new FinanceReports(FinanceController::entriesFor($user));
@@ -88,7 +88,7 @@ class FinanceReportController extends Controller
     private function installments($user)
     {
         return Job::with('customer')
-            ->when(! $user->isBod(), fn ($q) => $q->whereIn('department', $user->visibleDepartments()))
+            ->when(! $user->seesAllDepartments(), fn ($q) => $q->whereIn('department', $user->visibleDepartments()))
             ->whereNotNull('installments')->where('archived', false)->get()
             ->flatMap(fn (Job $job) => collect($job->installments)->map(fn ($i) => [
                 'job_id' => $job->job_id,

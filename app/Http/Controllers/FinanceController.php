@@ -20,7 +20,7 @@ class FinanceController extends Controller
     public function index(Request $request): View
     {
         $user = $request->user();
-        abort_unless($user->isBod() || $user->isDeptHead(), 403);
+        abort_unless($user->canManageFinance(), 403);
 
         $entries = self::entriesFor($user);
 
@@ -33,7 +33,7 @@ class FinanceController extends Controller
             ->mapWithKeys(fn ($bank, $key) => [$key => LedgerService::balanceFor($entries, "bank_{$key}")]);
 
         $visibleDepts = collect(config('kretivco.departments'))
-            ->keys()->filter(fn ($key) => $user->isBod() || in_array($key, $user->visibleDepartments(), true))->values();
+            ->keys()->filter(fn ($key) => $user->seesAllDepartments() || in_array($key, $user->visibleDepartments(), true))->values();
 
         $department = $request->query('department', '');
         $bank = $request->query('bank', '');
@@ -73,7 +73,7 @@ class FinanceController extends Controller
     public static function entriesFor(User $user)
     {
         return LedgerEntry::query()
-            ->when(! $user->isBod(), fn ($q) => $q->where(function ($q) use ($user) {
+            ->when(! $user->seesAllDepartments(), fn ($q) => $q->where(function ($q) use ($user) {
                 $q->whereIn('department', $user->visibleDepartments())->orWhereNull('department');
             }))
             ->orderByDesc('date')
@@ -151,6 +151,6 @@ class FinanceController extends Controller
     private function authorizeFinance(Request $request): void
     {
         $user = $request->user();
-        abort_unless($user->isBod() || $user->isDeptHead(), 403);
+        abort_unless($user->canManageFinance(), 403);
     }
 }

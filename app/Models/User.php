@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
-#[Fillable(['name', 'email', 'password', 'role', 'department', 'visible_departments', 'active', 'title', 'staff_id'])]
+#[Fillable(['name', 'email', 'password', 'role', 'department', 'visible_departments', 'modules', 'active', 'title', 'staff_id'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
@@ -25,6 +25,10 @@ class User extends Authenticatable
 
     public const ROLE_INTERN = 'intern';
 
+    public const ROLE_FINANCE = 'finance';
+
+    public const MODULES = ['jobs', 'finance', 'hr'];
+
     /**
      * Get the attributes that should be cast.
      *
@@ -37,12 +41,53 @@ class User extends Authenticatable
             'password' => 'hashed',
             'active' => 'boolean',
             'visible_departments' => 'array',
+            'modules' => 'array',
         ];
     }
 
     public function isBod(): bool
     {
         return $this->role === self::ROLE_BOD;
+    }
+
+    /**
+     * The Kretiv OS modules this user can open. BOD always has all of them;
+     * everyone else gets the list BOD saved for them, or their role's
+     * default until one is saved (so new accounts work with no setup).
+     *
+     * @return array<int, string>
+     */
+    public function moduleList(): array
+    {
+        if ($this->isBod()) {
+            return self::MODULES;
+        }
+
+        $list = is_array($this->modules) ? $this->modules : (config('kretivco.module_defaults')[$this->role] ?? []);
+
+        return array_values(array_intersect(self::MODULES, $list));
+    }
+
+    public function canAccess(string $module): bool
+    {
+        return in_array($module, $this->moduleList(), true);
+    }
+
+    public function isFinance(): bool
+    {
+        return $this->role === self::ROLE_FINANCE;
+    }
+
+    /** Who can work in the Finance module: BOD, Dept Head and the Finance role. */
+    public function canManageFinance(): bool
+    {
+        return $this->isBod() || $this->isDeptHead() || $this->isFinance();
+    }
+
+    /** Company-wide visibility (not limited to own departments): BOD and Finance. */
+    public function seesAllDepartments(): bool
+    {
+        return $this->isBod() || $this->isFinance();
     }
 
     public function isDeptHead(): bool

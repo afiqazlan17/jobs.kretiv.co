@@ -13,7 +13,7 @@ trait ScopesByDepartment
 {
     protected function userCanAccessDepartment(User $user, ?string $department): bool
     {
-        if ($user->isBod()) {
+        if ($user->seesAllDepartments()) {
             return true;
         }
 
